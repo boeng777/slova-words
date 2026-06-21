@@ -1,0 +1,1409 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Слова — тренажёр</title>
+<style>
+  :root{
+    --bg:#14161c; --surface:#1c2029; --surface-2:#252b37; --surface-3:#2e3543;
+    --text:#ece8df; --muted:#8b93a7; --faint:#5a6172;
+    --accent:#5ec8b0;        /* знал */
+    --accent-deep:#2f7d6c;
+    --warn:#e0a458;          /* не знал — сигнал, не тревога */
+    --warn-deep:#9a6a2c;
+    --line:rgba(255,255,255,.08);
+    --line-strong:rgba(255,255,255,.16);
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,"Times New Roman",serif;
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --radius:16px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%}
+  body{
+    background:
+      radial-gradient(1200px 600px at 50% -10%, #1b2030 0%, var(--bg) 60%) fixed,
+      var(--bg);
+    color:var(--text); font-family:var(--sans);
+    -webkit-font-smoothing:antialiased; line-height:1.45;
+  }
+  .wrap{position:relative;z-index:1;max-width:760px;margin:0 auto;padding:18px 18px 64px;min-height:100%;display:flex;flex-direction:column}
+
+  /* ── Aurora: живой цветной фон на пустом пространстве ── */
+  .aurora{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;
+          filter:blur(72px) saturate(1.25);opacity:.5}
+  .aurora span{position:absolute;display:block;border-radius:50%;mix-blend-mode:screen;will-change:transform}
+  .aurora .a1{width:48vw;height:48vw;left:-10vw;top:-8vh;
+    background:radial-gradient(circle,#5ec8b0,transparent 64%);animation:drift1 26s ease-in-out infinite}
+  .aurora .a2{width:44vw;height:44vw;right:-12vw;top:2vh;
+    background:radial-gradient(circle,#7b6cff,transparent 64%);animation:drift2 32s ease-in-out infinite}
+  .aurora .a3{width:52vw;height:52vw;left:14vw;bottom:-22vh;
+    background:radial-gradient(circle,#e0a458,transparent 64%);animation:drift3 30s ease-in-out infinite}
+  .aurora .a4{width:36vw;height:36vw;right:4vw;bottom:-8vh;
+    background:radial-gradient(circle,#e85c8a,transparent 64%);animation:drift1 28s ease-in-out infinite reverse}
+  @keyframes drift1{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(6vw,5vh) scale(1.08)}}
+  @keyframes drift2{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(-5vw,7vh) scale(1.1)}}
+  @keyframes drift3{0%,100%{transform:translate(0,0) scale(1)}50%{transform:translate(4vw,-6vh) scale(1.06)}}
+  @media (prefers-reduced-motion:reduce){.aurora span{animation:none}}
+
+  /* ── Иллюстрации на пустых/итоговых экранах ── */
+  .illus{width:104px;height:104px;margin:2px auto 16px;border-radius:50%;display:grid;place-items:center;
+    font-size:50px;line-height:1;position:relative;
+    background:radial-gradient(circle at 32% 28%, var(--i1,#5ec8b0), var(--i2,#7b6cff));
+    box-shadow:0 16px 46px -12px var(--i2,#7b6cff), inset 0 2px 10px rgba(255,255,255,.25)}
+  .illus::after{content:"";position:absolute;inset:-7px;border-radius:50%;
+    border:1.5px solid rgba(255,255,255,.12)}
+  .illus.spark::before{content:"✦";position:absolute;top:-6px;right:2px;font-size:16px;color:#fff;opacity:.8;
+    animation:tw 2.4s ease-in-out infinite}
+  @keyframes tw{0%,100%{opacity:.25;transform:scale(.8)}50%{opacity:.9;transform:scale(1.15)}}
+
+  /* ── Top bar ── */
+  header{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+  .brand{position:relative;display:inline-block;font-family:var(--serif);
+    font-size:34px;font-weight:600;line-height:1;letter-spacing:.5px;padding:8px 20px}
+  .brand .txt{position:relative;z-index:1;
+    background:linear-gradient(95deg,#ff2e7e 0%,#ff9d2e 33%,#15d6c2 66%,#2f86ff 100%);
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    filter:drop-shadow(0 1px 5px rgba(0,0,0,.5))}
+  .brand .brush{position:absolute;left:-9%;top:50%;width:118%;height:1.75em;
+    transform:translateY(-50%) rotate(-2deg);z-index:0;pointer-events:none;overflow:visible;opacity:.6}
+  @media(max-width:480px){.brand{font-size:27px}
+    /* на телефоне шапка переносит навигацию на свою строку, вкладки
+       горизонтально прокручиваются — иначе часть из них уезжает за экран */
+    header{flex-wrap:wrap}
+    nav{margin-left:0;width:100%;overflow-x:auto;justify-content:flex-start;
+        -webkit-overflow-scrolling:touch;scrollbar-width:none}
+    nav::-webkit-scrollbar{display:none}
+    nav button{flex:0 0 auto}}
+  nav{margin-left:auto;display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);
+      border-radius:999px;padding:4px}
+  nav button{all:unset;cursor:pointer;font:500 13px/1 var(--sans);color:var(--muted);
+      padding:8px 13px;border-radius:999px;transition:.15s}
+  nav button:hover{color:var(--text)}
+  nav button[aria-current="true"]{background:var(--surface-3);color:var(--text)}
+  nav button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ── Daily ring ── */
+  .ring-row{display:flex;align-items:center;gap:14px;margin-bottom:14px}
+  .ring{position:relative;width:54px;height:54px;flex:0 0 auto}
+  .ring svg{transform:rotate(-90deg)}
+  .ring .num{position:absolute;inset:0;display:grid;place-items:center;font:600 13px/1 var(--sans)}
+  .ring-meta{font-size:13px;color:var(--muted)}
+  .ring-meta b{color:var(--text);font-weight:600}
+
+  /* ── Mode bar (тумблеры + тест) ── */
+  .modebar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:18px}
+  .modebar .lbl{font-size:12px;color:var(--faint);margin-right:2px}
+  .tg{display:inline-flex;align-items:center;gap:7px;cursor:pointer;user-select:none;
+      background:var(--surface);border:1px solid var(--line);border-radius:999px;
+      padding:7px 13px;font:500 13px/1 var(--sans);color:var(--muted);transition:.13s}
+  .tg:hover{color:var(--text)}
+  .tg input{appearance:none;width:15px;height:15px;border-radius:5px;border:1.5px solid var(--line-strong);
+      background:var(--surface-3);display:grid;place-items:center;cursor:pointer;transition:.13s}
+  .tg input:checked{background:var(--accent);border-color:var(--accent)}
+  .tg input:checked::after{content:"✓";color:#0c1714;font-size:11px;font-weight:700}
+  .tg input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .tg:has(input:checked){color:var(--text);border-color:var(--line-strong)}
+  .tg.hot{color:var(--text);border-color:var(--warn);animation:chiphot 1.7s ease-in-out infinite}
+  @keyframes chiphot{0%,100%{box-shadow:0 0 0 1px rgba(224,164,88,.5),0 0 9px -3px rgba(224,164,88,.5)}
+    50%{box-shadow:0 0 0 1px var(--warn),0 0 18px 0 rgba(224,164,88,.85)}}
+  @media(prefers-reduced-motion:reduce){.tg.hot{animation:none;box-shadow:0 0 0 1px var(--warn)}}
+  .testbtn{all:unset;cursor:pointer;margin-left:auto;font:700 13px/1 var(--sans);color:#fff;
+      display:inline-flex;align-items:center;gap:6px;letter-spacing:.2px;
+      background:linear-gradient(135deg,#e0a458,#e85c8a 52%,#7b6cff);background-size:170% 100%;
+      border-radius:999px;padding:9px 18px;transition:.2s;
+      box-shadow:0 6px 18px -6px rgba(232,92,138,.55),inset 0 1px 0 rgba(255,255,255,.28)}
+  .testbtn:hover{background-position:100% 0;transform:translateY(-1px);
+      box-shadow:0 10px 24px -6px rgba(232,92,138,.72)}
+  .testbtn:active{transform:translateY(0)}
+  .testbtn:focus-visible{outline:2px solid #fff;outline-offset:2px}
+  .testbtn .tx{position:relative;top:0}
+
+  /* ── Study card ── */
+  .stage{flex:1;display:flex;flex-direction:column;justify-content:center}
+  .card{
+    background:linear-gradient(180deg,var(--surface-2),var(--surface));
+    border:1px solid var(--line); border-radius:var(--radius);
+    padding:40px 28px; text-align:center; position:relative;
+    box-shadow:0 18px 50px -28px rgba(0,0,0,.8);
+  }
+  .testbadge{position:absolute;top:14px;left:0;right:0;text-align:center;
+      font:600 11px/1 var(--sans);letter-spacing:.6px;text-transform:uppercase;color:var(--warn)}
+  .pips{display:flex;gap:6px;justify-content:center;margin-bottom:26px;height:8px}
+  .pips i{width:22px;height:6px;border-radius:3px;background:var(--surface-3);transition:.2s}
+  .pips i.on{background:var(--accent)}
+  .word{font-family:var(--serif);font-weight:600;font-size:clamp(38px,9vw,62px);
+        line-height:1.05;letter-spacing:.2px;word-break:break-word}
+  .tr{margin-top:8px;font-size:15px;color:var(--faint);letter-spacing:.3px;min-height:18px}
+  .tr.ans{margin-top:4px;opacity:0;transition:.18s}
+  .hintword{margin-top:10px;font-size:13px;color:var(--faint);min-height:18px}
+  .answer{margin-top:22px;min-height:42px}
+  .answer .ru{font-size:clamp(20px,5vw,28px);color:var(--accent);opacity:0;transition:.18s;transform:translateY(4px)}
+  .answer.show .ru{opacity:1;transform:none}
+  .answer .meta{font-size:12px;color:var(--muted);margin-top:6px;opacity:0;transition:.18s}
+  .answer.show .meta{opacity:1}
+  .answer.show .tr.ans{opacity:1}
+  .answer .example{opacity:0;transition:.2s;margin-top:14px;font-size:14px;line-height:1.45;
+    color:var(--muted);font-style:italic}
+  .answer.show .example{opacity:1}
+  .example .exhl{color:var(--accent);font-style:normal;font-weight:600}
+  .example .exru{display:block;margin-top:5px;font-style:normal;font-size:13px;color:var(--faint)}
+
+  /* ── Карточка форм (глагол / исключение) ── */
+  .forms{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+  .answer .forms,.answer .fmeta{opacity:0;transition:.2s}
+  .answer.show .forms,.answer.show .fmeta{opacity:1}
+  .fcol{display:flex;flex-direction:column;gap:5px;min-width:94px;padding:12px 14px;border-radius:12px;
+    background:var(--surface-3);border:1px solid var(--line)}
+  .fcol .flab{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.5px}
+  .fcol .fval{font-family:var(--serif);font-size:23px;font-weight:600;line-height:1}
+  .fcol.f1 .fval{color:var(--text)}
+  .fcol.f2 .fval{color:var(--warn)}
+  .fcol.f3 .fval{color:#c58bff}
+  .fmeta{margin-top:14px;font-size:14px;color:var(--muted)}
+  .famtag{display:inline-block;background:rgba(94,200,176,.14);color:var(--accent);
+    border-radius:999px;padding:2px 10px;font-size:12px;margin-right:6px}
+
+  /* ── Карточка выражения (связка / фразовый глагол / идиома) ── */
+  .word.phrase{font-size:clamp(28px,6.5vw,42px);line-height:1.12}
+  .ptag{font:600 11px/1 var(--sans);letter-spacing:.5px;text-transform:uppercase;color:var(--accent);
+    background:rgba(94,200,176,.12);border-radius:999px;padding:5px 11px;display:inline-block;margin-bottom:14px}
+  .answer .literal{opacity:0;transition:.2s;margin-top:8px;font-size:13px;color:var(--warn);font-style:italic}
+  .answer.show .literal{opacity:1}
+
+  /* ── Controls ── */
+  .controls{margin-top:24px;display:flex;flex-direction:column;gap:12px}
+  .btn{all:unset;cursor:pointer;text-align:center;font:600 16px/1 var(--sans);
+       padding:17px;border-radius:14px;border:1px solid var(--line-strong);transition:.13s}
+  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+  .btn.reveal{background:var(--surface-3);color:var(--text)}
+  .btn.reveal:hover{background:#374050}
+  .grade{display:none;grid-template-columns:1fr 1fr;gap:12px}
+  .grade.show{display:grid}
+  .btn.no{background:rgba(224,164,88,.12);color:var(--warn);border-color:rgba(224,164,88,.35)}
+  .btn.no:hover{background:rgba(224,164,88,.2)}
+  .btn.yes{background:rgba(94,200,176,.12);color:var(--accent);border-color:rgba(94,200,176,.4)}
+  .btn.yes:hover{background:rgba(94,200,176,.2)}
+  .btn small{display:block;font-weight:500;font-size:11px;color:var(--muted);margin-top:5px}
+  .keys{text-align:center;font-size:12px;color:var(--faint);margin-top:6px}
+  kbd{font-family:var(--sans);background:var(--surface-3);border:1px solid var(--line);
+      border-radius:5px;padding:1px 6px;font-size:11px;color:var(--muted)}
+
+  /* ── Empty / done / результаты ── */
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:30px 24px}
+  .panel h2{font-family:var(--serif);font-weight:600;margin:0 0 8px;font-size:24px}
+  .panel p{color:var(--muted);margin:0 0 4px;font-size:14px}
+  .big-num{font-family:var(--serif);font-size:46px;color:var(--accent);margin:6px 0}
+  .res-score{font-family:var(--serif);font-size:54px;margin:8px 0 2px}
+  .res-sub{color:var(--muted);font-size:14px;margin-bottom:16px}
+  .res-miss{list-style:none;padding:0;margin:14px 0 0;text-align:left;max-height:260px;overflow:auto}
+  .res-miss li{display:flex;align-items:baseline;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .res-miss .en{font-weight:600}
+  .res-miss .tr{margin:0;font-size:12px;color:var(--faint)}
+  .res-miss .ru{color:var(--muted);margin-left:auto}
+
+  /* ── Forms / views ── */
+  .view{display:none}
+  .view.active{display:block}
+  label{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px}
+  input[type=text],textarea,select{
+    width:100%;background:var(--surface);border:1px solid var(--line);border-radius:10px;
+    color:var(--text);font:400 15px/1.4 var(--sans);padding:12px 13px;resize:vertical}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--accent)}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+  .action{all:unset;cursor:pointer;margin-top:16px;display:inline-block;background:var(--accent);
+    color:#0c1714;font:600 14px/1 var(--sans);padding:12px 20px;border-radius:10px}
+  .action:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+  .action.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+  .toast{font-size:13px;color:var(--accent);margin-top:10px;min-height:18px}
+
+  /* ── Stats ── */
+  .stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:18px}
+  .stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .stat .v{font-family:var(--serif);font-size:30px}
+  .stat .l{font-size:12px;color:var(--muted);margin-top:2px}
+  .bar{height:8px;border-radius:4px;background:var(--surface-3);overflow:hidden;display:flex;margin:6px 0 18px}
+  .bar i{height:100%}
+  .hard{list-style:none;padding:0;margin:0}
+  .hard li{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+  .hard .en{font-weight:600}
+  .hard .ru{color:var(--muted)}
+  .hard .tag{margin-left:auto;font-size:12px;color:var(--warn);background:rgba(224,164,88,.12);
+    padding:3px 9px;border-radius:999px}
+
+  /* ── График точности по дням ── */
+  .chart{background:var(--surface);border:1px solid var(--line);border-radius:12px;
+    padding:14px 14px 8px;margin:6px 0 6px}
+  .chart svg{display:block;width:100%;height:120px}
+  .chart .empty{color:var(--faint);font-size:13px;text-align:center;padding:30px 0}
+  .hard-head{display:flex;align-items:center;gap:10px;margin:8px 0 0;flex-wrap:wrap}
+  .seg{margin-left:auto;display:flex;gap:2px;background:var(--surface);border:1px solid var(--line);
+    border-radius:999px;padding:3px}
+  .seg button{all:unset;cursor:pointer;font:500 12px/1 var(--sans);color:var(--muted);
+    padding:6px 11px;border-radius:999px;transition:.13s}
+  .seg button:hover{color:var(--text)}
+  .seg button[aria-current="true"]{background:var(--surface-3);color:var(--text)}
+  .seg button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .banner{background:rgba(224,164,88,.1);border:1px solid rgba(224,164,88,.3);color:var(--warn);
+    border-radius:10px;padding:10px 13px;font-size:13px;margin-bottom:14px;display:none}
+  .banner.show{display:block}
+  .muted{color:var(--muted);font-size:13px}
+  @media(max-width:480px){.row2,.row3{grid-template-columns:1fr}.card{padding:32px 18px}}
+</style>
+
+<div class="aurora" aria-hidden="true"><span class="a1"></span><span class="a2"></span><span class="a3"></span><span class="a4"></span></div>
+<div class="wrap">
+  <header>
+    <div class="brand"><svg class="brush" viewBox="0 0 360 70" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="brushG" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#ff2e7e"/><stop offset=".34" stop-color="#ff9d2e"/><stop offset=".64" stop-color="#15d6c2"/><stop offset="1" stop-color="#2f86ff"/></linearGradient><filter id="brushR" x="-12%" y="-90%" width="124%" height="280%"><feTurbulence type="fractalNoise" baseFrequency="0.012 0.5" numOctaves="2" seed="9" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="24"/></filter></defs><g filter="url(#brushR)"><path d="M10,40 Q180,8 350,30 Q180,62 10,44 Z" fill="url(#brushG)"/><path d="M22,32 Q180,16 344,24" fill="none" stroke="url(#brushG)" stroke-width="4" opacity=".75"/><path d="M18,50 Q180,42 346,40" fill="none" stroke="url(#brushG)" stroke-width="3" opacity=".6"/></g></svg><span class="txt">Слова<span class="dot">.</span>Words</span></div>
+    <nav>
+      <button data-view="study" aria-current="true">Учить</button>
+      <button data-view="forms">Формы</button>
+      <button data-view="phrases">Выражения</button>
+      <button data-view="add">Добавить</button>
+      <button data-view="stats">Статистика</button>
+      <button data-view="settings">Ещё</button>
+    </nav>
+  </header>
+
+  <div id="banner" class="banner"></div>
+
+  <!-- ════ STUDY ════ -->
+  <section class="view active" id="view-study">
+    <div class="ring-row">
+      <div class="ring">
+        <svg width="54" height="54">
+          <circle cx="27" cy="27" r="22" fill="none" stroke="var(--surface-3)" stroke-width="5"></circle>
+          <circle id="ringFg" cx="27" cy="27" r="22" fill="none" stroke="var(--accent)" stroke-width="5"
+                  stroke-linecap="round" stroke-dasharray="138.2" stroke-dashoffset="138.2"></circle>
+        </svg>
+        <div class="num" id="ringNum">0</div>
+      </div>
+      <div class="ring-meta">
+        Сегодня: <b id="todayDone">0</b> / <span id="todayTarget">400</span> слов<br>
+        <span id="queueLeft">осталось в очереди: 0</span>
+      </div>
+    </div>
+
+    <div class="modebar">
+      <span class="lbl">Учим:</span>
+      <label class="tg"><input type="checkbox" id="tgReview" checked> Повторение</label>
+      <label class="tg"><input type="checkbox" id="tgFresh" checked> Новые</label>
+      <label class="tg"><input type="checkbox" id="tgMistakes"> Ошибки</label>
+      <button class="testbtn" id="testBtn">Пройти тест</button>
+    </div>
+
+    <div class="stage">
+      <div id="studyBody"></div>
+    </div>
+  </section>
+
+  <!-- ════ ADD ════ -->
+  <section class="view" id="view-add">
+    <div class="panel">
+      <h2>Добавить слово</h2>
+      <p>Встретил незнакомое — закинь сюда, оно попадёт в умную ротацию. Транскрипция подставится сама.</p>
+      <div class="row3">
+        <div><label>Английское слово</label><input type="text" id="addEn" placeholder="resilient" autocomplete="off"></div>
+        <div><label>Транскрипция <span class="muted" id="trHint"></span></label><input type="text" id="addTr" placeholder="rɪˈzɪliənt" autocomplete="off"></div>
+        <div><label>Перевод</label><input type="text" id="addRu" placeholder="стойкий, упругий" autocomplete="off"></div>
+      </div>
+      <button class="action" id="addBtn">Добавить</button>
+      <div class="toast" id="addToast"></div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h2>Импорт списком</h2>
+      <p>По строке на слово. Разделитель: <b>—</b>, <b>-</b>, <b>;</b>, запятая или таб. Транскрипции подтянутся фоном.</p>
+      <label>Например: <span class="muted">word — слово</span></label>
+      <textarea id="importBox" rows="6" placeholder="resilient — стойкий
+to grasp — ухватить, понять
+deadline — крайний срок"></textarea>
+      <button class="action" id="importBtn">Импортировать</button>
+      <div class="toast" id="importToast"></div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h2>Загрузить набор слов</h2>
+      <p>Файл обмена (<b>.json</b>), который тебе прислали. Уже имеющиеся слова пропускаются — добавятся только новые (с транскрипцией).</p>
+      <input type="file" id="wordsFile" accept=".json,application/json" style="margin-bottom:10px">
+      <label>…или вставь содержимое сюда</label>
+      <textarea id="wordsBox" rows="4" placeholder='[{"en":"resilient","ru":"стойкий","tr":"rɪˈzɪliənt"}]'></textarea>
+      <button class="action" id="wordsImportBtn">Загрузить слова</button>
+      <div class="toast" id="wordsToast"></div>
+    </div>
+  </section>
+
+  <!-- ════ STATS ════ -->
+  <section class="view" id="view-stats">
+    <div class="stat-grid">
+      <div class="stat"><div class="v" id="stTotal">0</div><div class="l">всего слов</div></div>
+      <div class="stat"><div class="v" id="stLearned">0</div><div class="l">выучено</div></div>
+      <div class="stat"><div class="v" id="stProgress">0</div><div class="l">в процессе</div></div>
+      <div class="stat"><div class="v" id="stAcc">—</div><div class="l">точность ответов</div></div>
+      <div class="stat"><div class="v" id="stStreak">0</div><div class="l">серия дней 🔥</div></div>
+      <div class="stat"><div class="v" id="stAnswers">0</div><div class="l">ответов всего</div></div>
+    </div>
+
+    <div class="muted">Точность по дням</div>
+    <div id="accChart" class="chart"></div>
+    <div class="muted" id="dirSplit" style="margin:-6px 0 18px"></div>
+
+    <div class="muted">Распределение по уровню памяти</div>
+    <div class="bar" id="distBar"></div>
+
+    <div class="hard-head">
+      <h2 style="font-family:var(--serif);font-weight:600;font-size:20px;margin:0">Трудные слова</h2>
+      <div class="seg" id="hardPeriod">
+        <button data-d="0" aria-current="true">всё время</button>
+        <button data-d="30">30 дней</button>
+        <button data-d="7">7 дней</button>
+      </div>
+    </div>
+    <p class="muted" style="margin:4px 0 0">Где ты ошибаешься чаще всего.</p>
+    <ul class="hard" id="hardList"></ul>
+  </section>
+
+  <!-- ════ SETTINGS ════ -->
+  <section class="view" id="view-settings">
+    <div class="panel">
+      <h2>Настройки</h2>
+      <label>Направление</label>
+      <select id="setDir">
+        <option value="en-ru">Английский → перевод (узнавание)</option>
+        <option value="ru-en">Перевод → английский (вспоминание, сложнее)</option>
+      </select>
+      <label>Цель в день (слов)</label>
+      <input type="text" id="setTarget" inputmode="numeric" value="400">
+      <button class="action" id="saveSettings">Сохранить</button>
+      <div class="toast" id="setToast"></div>
+    </div>
+    <div class="panel" style="margin-top:14px">
+      <h2>Резервная копия</h2>
+      <p>Прогресс сохраняется автоматически в <b>data/state.json</b>. Эта кнопка — отдельная копия для переноса или подстраховки.</p>
+      <button class="action ghost" id="exportBtn">Скачать копию (.json)</button>
+      <label style="margin-top:16px">Восстановить из копии</label>
+      <textarea id="restoreBox" rows="3" placeholder="вставь содержимое .json сюда"></textarea>
+      <button class="action ghost" id="restoreBtn">Восстановить</button>
+      <div class="toast" id="backupToast"></div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h2>Обмен и данные</h2>
+      <p>Слова — для обмена с друзьями (без твоего прогресса). Лог — все ответы для анализа.</p>
+      <button class="action ghost" id="exportWordsBtn">Скачать слова (.json)</button>
+      <button class="action ghost" id="exportLogBtn">Скачать лог (.jsonl)</button>
+      <div class="toast" id="dataToast"></div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h2>Сброс</h2>
+      <p><b>Сбросить статистику</b> — обнулить прогресс (уровни, ошибки), но <u>оставить</u> все слова.</p>
+      <button class="action ghost" id="resetStatsBtn" style="color:var(--warn);border-color:rgba(224,164,88,.4)">Сбросить статистику</button>
+      <p style="margin-top:16px"><b>Сбросить всё</b> — удалить и прогресс, и слова (к стартовому набору). Отменить нельзя.</p>
+      <button class="action ghost" id="resetBtn" style="color:var(--warn);border-color:rgba(224,164,88,.4)">Сбросить всё</button>
+      <div class="toast" id="resetToast"></div>
+    </div>
+
+    <div class="panel" style="margin-top:14px">
+      <h2>Завершить работу</h2>
+      <p>Остановить локальный сервер. После этого вкладку можно закрыть.</p>
+      <button class="action ghost" id="shutdownBtn">Завершить работу</button>
+      <div class="toast" id="shutdownToast"></div>
+    </div>
+  </section>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   Тренажёр слов — интервальное повторение (Leitner / FSRS-стиль)
+   Дневная модель расписания (не таймстампы): слово «к повторению»,
+   если его день показа ≤ сегодня. Перезапуск сервера на счёт времени
+   не влияет — сравнение дат происходит в момент захода.
+   ════════════════════════════════════════════════════════════ */
+
+const DAY=86400000;
+// интервалы (в днях) по уровню "коробки" 0..5; "Знал" поднимает на уровень выше
+const INTERVAL=[0, 3, 7, 14, 30, 60];
+const LEARNED_BOX=5;          // с этого уровня слово считается выученным
+const REQUEUE_GAP=5;          // через сколько карточек вернуть забытое в этой сессии
+const STORE_KEY='vocab-state';
+const EVENTS_KEY='vocab-events-buffer';
+
+let state=null;               // {cards, settings, daily}
+let canPersist=true;
+
+/* ---------- встроенная база частотных слов ---------- */
+const SEED=`i:я|you:ты, вы|he:он|she:она|we:мы|they:они|this:это, этот|that:тот, то|who:кто|people:люди|man:мужчина|woman:женщина|child:ребёнок|friend:друг|family:семья|name:имя|
+be:быть|have:иметь|do:делать|say:говорить|get:получать|make:делать, создавать|go:идти, ехать|know:знать|take:брать|see:видеть|come:приходить|think:думать|look:смотреть|want:хотеть|give:давать|use:использовать|find:находить|tell:рассказывать|ask:спрашивать|work:работать|seem:казаться|feel:чувствовать|try:пытаться|leave:уходить, оставлять|call:звонить, называть|need:нуждаться|become:становиться|mean:значить|keep:держать, продолжать|begin:начинать|help:помогать|show:показывать|hear:слышать|play:играть|run:бежать|move:двигать(ся)|live:жить|believe:верить|bring:приносить|happen:случаться|write:писать|sit:сидеть|stand:стоять|lose:терять|pay:платить|meet:встречать|include:включать|continue:продолжать|learn:учить(ся)|change:менять|understand:понимать|watch:смотреть, наблюдать|follow:следовать|stop:останавливать(ся)|create:создавать|speak:говорить|read:читать|spend:тратить|grow:расти|open:открывать|walk:идти пешком|win:побеждать|teach:учить (кого-то)|buy:покупать|send:отправлять|build:строить|stay:оставаться|fall:падать|cut:резать|reach:достигать|remain:оставаться|eat:есть|drink:пить|sleep:спать|wait:ждать|sell:продавать|drive:водить|wear:носить (одежду)|close:закрывать|pull:тянуть|push:толкать|carry:нести|break:ломать|hope:надеяться|choose:выбирать|decide:решать|remember:помнить|forget:забывать|explain:объяснять|return:возвращать(ся)|save:спасать, сохранять|agree:соглашаться|allow:позволять|add:добавлять|throw:бросать|catch:ловить|draw:рисовать|count:считать|hold:держать|
+time:время|year:год|day:день|week:неделя|month:месяц|hour:час|minute:минута|morning:утро|night:ночь|way:путь, способ|thing:вещь|life:жизнь|world:мир|hand:рука|eye:глаз|head:голова|face:лицо|heart:сердце|word:слово|place:место|home:дом|house:дом|room:комната|door:дверь|water:вода|food:еда|money:деньги|book:книга|story:история|school:школа|city:город|country:страна|road:дорога|car:машина|problem:проблема|question:вопрос|answer:ответ|idea:идея|fact:факт|reason:причина|number:число|group:группа|part:часть|side:сторона|end:конец|point:точка, смысл|case:случай|example:пример|area:область|business:дело, бизнес|government:правительство|company:компания|job:работа|team:команда|war:война|health:здоровье|music:музыка|light:свет|color:цвет|sound:звук|voice:голос|line:линия|paper:бумага|body:тело|mind:разум|love:любовь|fear:страх|truth:правда|power:сила, власть|language:язык|weather:погода|sky:небо|sea:море|fire:огонь|tree:дерево|animal:животное|dog:собака|cat:кошка|bird:птица|fish:рыба|flower:цветок|mountain:гора|river:река|field:поле|street:улица|building:здание|table:стол|chair:стул|window:окно|key:ключ|phone:телефон|computer:компьютер|clothes:одежда|bread:хлеб|coffee:кофе|tea:чай|
+good:хороший|new:новый|first:первый|last:последний|long:длинный|great:отличный, великий|little:маленький|own:собственный|other:другой|old:старый|right:правильный, правый|big:большой|high:высокий|different:разный|small:маленький|large:большой|next:следующий|early:ранний|young:молодой|important:важный|few:немногие|public:общественный|bad:плохой|same:тот же|able:способный|free:свободный, бесплатный|full:полный|sure:уверенный|low:низкий|easy:лёгкий|hard:трудный, твёрдый|late:поздний|far:далёкий|near:близкий|hot:горячий|cold:холодный|warm:тёплый|strong:сильный|weak:слабый|happy:счастливый|sad:грустный|angry:злой|tired:усталый|busy:занятый|ready:готовый|real:настоящий|true:истинный|clean:чистый|dirty:грязный|fast:быстрый|slow:медленный|rich:богатый|poor:бедный|beautiful:красивый|dark:тёмный|bright:яркий|heavy:тяжёлый|quiet:тихий|loud:громкий|safe:безопасный|dangerous:опасный|possible:возможный|difficult:трудный|simple:простой|serious:серьёзный|famous:известный|strange:странный|common:обычный|
+not:не|very:очень|also:также|just:просто, только|now:сейчас|then:тогда, потом|here:здесь|there:там|today:сегодня|tomorrow:завтра|yesterday:вчера|always:всегда|never:никогда|often:часто|sometimes:иногда|usually:обычно|again:снова|still:всё ещё|already:уже|almost:почти|enough:достаточно|well:хорошо|soon:скоро|together:вместе|maybe:может быть|really:действительно|only:только|even:даже|however:однако|instead:вместо|
+about:о|after:после|before:до, перед|between:между|during:во время|without:без|under:под|over:над|through:сквозь|against:против|because:потому что|although:хотя|while:пока|until:до тех пор|since:с тех пор|where:где|when:когда|why:почему|how:как|which:который|whose:чей|
+one:один|two:два|three:три|many:много (счётное)|much:много (несчётное)|some:несколько, некоторые|all:все, всё|more:больше|most:большинство|less:меньше|half:половина|both:оба|each:каждый|every:каждый|several:несколько
+|hello:привет, здравствуйте|hi:привет|goodbye:до свидания|bye:пока|yes:да|no:нет|please:пожалуйста (просьба)|thanks:спасибо|sorry:извини(те)|welcome:добро пожаловать|okay:хорошо, ладно|mother:мать|father:отец|parents:родители|brother:брат|sister:сестра|son:сын|daughter:дочь|wife:жена|husband:муж|baby:младенец|boy:мальчик|girl:девочка|person:человек|neighbor:сосед|meeting:встреча, совещание|deadline:крайний срок|project:проект|task:задача|report:отчёт|email:электронная почта|manager:руководитель, менеджер|boss:начальник|colleague:коллега|salary:зарплата|schedule:расписание, график|office:офис|contract:контракт, договор|customer:клиент, покупатель|client:клиент|deal:сделка|goal:цель|skill:навык|experience:опыт|interview:собеседование|resume:резюме|employee:сотрудник|employer:работодатель|department:отдел|presentation:презентация|feedback:обратная связь, отзыв|position:должность|responsibility:обязанность, ответственность|hire:нанимать|manage:управлять|address:адрес|map:карта|ticket:билет|bus:автобус|train:поезд|station:станция, вокзал|airport:аэропорт|flight:рейс, полёт|luggage:багаж|passport:паспорт|hotel:отель, гостиница|taxi:такси|metro:метро|corner:угол|traffic:движение, пробки|left:левый, налево|straight:прямо|turn:поворот; поворачивать|cross:переходить, пересекать|direction:направление|distance:расстояние|restaurant:ресторан|menu:меню|bill:счёт (в ресторане)|order:заказ; заказывать|waiter:официант|shop:магазин|store:магазин|price:цена|cash:наличные|card:карта (банковская)|discount:скидка|market:рынок|supermarket:супермаркет|receipt:чек|breakfast:завтрак|lunch:обед|dinner:ужин|meat:мясо|vegetable:овощ|fruit:фрукт|dish:блюдо|delicious:вкусный|hungry:голодный|thirsty:испытывающий жажду|sugar:сахар|salt:соль|milk:молоко|juice:сок|plate:тарелка|knife:нож|fork:вилка|spoon:ложка|cup:чашка|glass:стакан|bottle:бутылка|hair:волосы|arm:рука (от плеча)|leg:нога|foot:ступня|finger:палец|tooth:зуб|mouth:рот|nose:нос|ear:ухо|stomach:живот, желудок|doctor:врач|hospital:больница|medicine:лекарство|pain:боль|sick:больной|healthy:здоровый|pharmacy:аптека|talk:говорить, разговаривать|repeat:повторять|spell:писать по буквам|sentence:предложение (грам.)|translate:переводить|pronounce:произносить|conversation:разговор, беседа|meaning:значение, смысл|mistake:ошибка|advice:совет|information:информация|news:новости|arrive:прибывать, приезжать|travel:путешествовать|visit:посещать|rent:арендовать, снимать|share:делиться|receive:получать|check:проверять|fill:заполнять|sign:подписывать|cancel:отменять|confirm:подтверждать|fix:чинить, исправлять|improve:улучшать|practice:практиковать(ся)|recommend:рекомендовать|suggest:предлагать|offer:предлагать|accept:принимать|refuse:отказывать(ся)|complain:жаловаться|apologize:извиняться|introduce:представлять (знакомить)|organize:организовывать|finish:заканчивать|prefer:предпочитать|borrow:брать взаймы|lend:давать взаймы|prepare:готовить, подготавливать|join:присоединяться|enjoy:наслаждаться|worry:беспокоиться|relax:расслабляться|remind:напоминать|mention:упоминать|describe:описывать|compare:сравнивать|discuss:обсуждать|solve:решать (проблему)|afford:позволить себе (по деньгам)|available:доступный, свободный|comfortable:удобный, комфортный|expensive:дорогой|cheap:дешёвый|polite:вежливый|friendly:дружелюбный|kind:добрый|careful:осторожный|quick:быстрый|closed:закрытый|empty:пустой|correct:правильный|wrong:неправильный, неверный|similar:похожий|nervous:нервный, взволнованный|excited:взволнованный (радостно)|boring:скучный|interesting:интересный|useful:полезный|favorite:любимый|afraid:боящийся|proud:гордый|honest:честный|brave:храбрый|solution:решение|opportunity:возможность|journey:поездка, путешествие|trip:поездка|service:обслуживание, услуга|quality:качество|furniture:мебель|appointment:назначенная встреча|calendar:календарь|weekend:выходные|holiday:праздник, выходной|vacation:отпуск|moment:момент|monday:понедельник|tuesday:вторник|wednesday:среда|thursday:четверг|friday:пятница|saturday:суббота|sunday:воскресенье|red:красный|blue:синий|green:зелёный|yellow:жёлтый|black:чёрный|white:белый|brown:коричневый|grey:серый|four:четыре|five:пять|six:шесть|seven:семь|eight:восемь|nine:девять|ten:десять|hundred:сто|thousand:тысяча|but:но|or:или|if:если|so:так, поэтому`;
+
+/* ---------- встроенная таблица транскрипций (запечена заранее) ---------- */
+const TR={"i":"aɪ","you":"jʉː","he":"hi","she":"ʃiː","we":"wiː","they":"ðeɪ","this":"ðəs","that":"ˈðæt","who":"huː","people":"ˈpiːpəl","man":"mɛn","woman":"ˈwʊmɘn","child":"t͡ʃaɪld","friend":"fɹɛnd","family":"ˈfɛm(ɘ)li","name":"neɪm","be":"biː","have":"hæv","do":"dʉː","say":"seɪ","get":"ɡɛt","make":"meɪk","go":"ɡəʉ","know":"nəʊ","take":"teɪk","see":"siː","come":"kʌm","think":"θɪŋk","look":"lʊk","want":"wɔnt","give":"ɡɪv","use":"juːz","find":"faɪnd","tell":"tɛl","ask":"ˈask","work":"wɜːk","seem":"siːm","feel":"fiːl","try":"tɹaɪ","leave":"liːv","call":"kɔːɫ","need":"niːd","become":"bəˈkʊm","mean":"miːn","keep":"kiːp","begin":"biˈɡɪn","help":"hɛlp","show":"ʃəʊ","hear":"hɪə(ɹ)","play":"pleɪ","run":"ɹʊn","move":"muːv","live":"lɪv","believe":"bɪˈliːv","bring":"ˈbɹɪŋ","happen":"ˈhæpən","write":"ɹaɪt","sit":"sɪt","stand":"stænd","lose":"luːz","pay":"peɪ","meet":"miːt","include":"ɪnˈkluːd","continue":"kənˈtɪnjuː","learn":"lɜːn","change":"tʃeɪndʒ","understand":"ˌɞndəɹˈstand","watch":"wɒt͡ʃ","follow":"ˈfɒləʊ","stop":"stɒp","create":"kriˈeɪt","speak":"spiːk","read":"ɹiːd","spend":"spɛnd","grow":"ɡɹəʊ","open":"ˈəʊ.pən","walk":"wɔːk","win":"wɪn","teach":"tiːt͡ʃ","buy":"baɪ","send":"sɛnd","build":"bɪld","stay":"steɪ","fall":"fɔːl","cut":"kʌt","reach":"ɹiːt͡ʃ","remain":"ɹɪˈmeɪn","eat":"iːt","drink":"dɹɪŋk","sleep":"sliːp","wait":"weɪt","sell":"sɛl","drive":"dɹaɪv","wear":"wɛə","close":"kləʊz","pull":"pʊl","push":"pʷʊʃ","carry":"ˈkæ.ɹi","break":"bɹeɪk","hope":"həʊp","choose":"t͡ʃuːz","decide":"dɪˈsaɪd","remember":"ɹɪˈmɛmbə","forget":"fəˈɡɛt","explain":"ɛkˈspleɪn","return":"ɹɪˈtɜːn","save":"seɪv","agree":"əˈɡɹi","allow":"əˈlaʊ","add":"æd","throw":"θɹəʊ","catch":"kæt͡ʃ","draw":"dɹɔː","count":"kaʊnt","hold":"həʊld","time":"taɪm","year":"jɪə","day":"deɪ","week":"wiːk","month":"mʌnθ","hour":"ˈaʊɚ","minute":"ˈmɪnɪt","morning":"ˈmɔːnɪŋ","night":"naɪt","way":"weɪ","thing":"θɪŋ","life":"laɪf","world":"wɝld","hand":"hænd","eye":"aɪ","head":"hɛd","face":"feɪs","heart":"hɑːt","word":"wɜːd","place":"pleɪs","home":"(h)əʊm","house":"hʌʊs","room":"ɹuːm","door":"dɔː","water":"ˈwoːtə","food":"fuːd","money":"ˈmʌni","book":"buːk","story":"ˈstɔː.ɹi","school":"skuːl","city":"sɪtɪ","country":"ˈkɐntɹi","road":"ɹəʊd","car":"kɑː","problem":"ˈpɹɒbləm","question":"ˈkwɛstjən","answer":"ˈan.sə","idea":"ɑeˈdiə̯","fact":"fækt","reason":"ˈɹiːzən","number":"ˈnʌmbə","group":"ɡɹuːp","part":"pɐːt","side":"saɪd","end":"ɛnd","point":"pɔɪnt","case":"keɪs","example":"əɡˈzæmpl̩","area":"ˈɛə̯ɹɪə̯","business":"ˈbɪd.nəs","government":"ˈɡʌvə(n)mənt","company":"ˈkʌmp(ə)ni","job":"d͡ʒɒb","team":"tiːm","war":"wɔː","health":"hɛlθ","music":"ˈmjuːzɪk","light":"lʌɪt","color":"ˈkʌl.ə(ɹ)","sound":"saʊnd","voice":"vɔɪs","line":"laɪn","paper":"ˈpeɪpə","body":"ˈbɒdi","mind":"maɪnd","love":"lʊv","fear":"fɪə","truth":"tɹuːθ","power":"ˈpaʊ.ə(ɹ)","language":"ˈleɪŋɡwɪd͡ʒ","weather":"ˈwɛðə","sky":"skaɪ","sea":"siː","fire":"ˈfaɪə","tree":"tɹiː","animal":"ˈænɪməl","dog":"dɑɡ","cat":"kat","bird":"bɜd","fish":"fɪʃ","flower":"ˈflaʊ.ə","mountain":"ˈmaʊntɪn","river":"ˈɹɪvə","field":"fiːld","street":"stɹiːt","building":"ˈbɪl.dɪŋ","table":"ˈteɪbəl","chair":"t͡ʃɛə(ɹ)","window":"ˈwɪndəʊ","key":"kiː","phone":"fəʊ̯n","computer":"kəmˈpjuːtə","clothes":"kləʊ(ð)z","bread":"bɹeːd","coffee":"ˈkɑ.fi","tea":"tiː","good":"ɡʊ(d)","new":"njʉː","first":"fɪrst","last":"last","long":"ˈlɔːŋ","great":"ɡɹeɪt","little":"ˈlɪ.ɾɫ̩","own":"ˈəʊn","other":"ˈɐðə","old":"ˈɒʊld","right":"ˈɹaɪt","big":"bɪɡ","high":"haɪ","different":"ˈdɪf.(ə)ɹ.ənt","small":"smoːl","large":"ˈlɑːd͡ʒ","next":"nɛkst","early":"ˈɜː.li","young":"jʌŋ","important":"ɪmˈpɔːtənt","few":"fjuː","public":"ˈpʌblɪk","bad":"bæd","same":"seɪm","able":"ˈeɪ.bl̩","free":"fɹiː","full":"fʊl","sure":"ʃoː","low":"ləʊ","easy":"ˈiːzi","hard":"hɑːd","late":"leɪt","far":"fɑː","near":"nɪə(ɹ)","hot":"hɒt","cold":"kɔʊld","warm":"wɔːm","strong":"stɹɑŋ","weak":"wiːk","happy":"ˈhæpiː","sad":"sæd","angry":"ˈæŋ.ɡɹi","tired":"taɪəd","busy":"ˈbɪzi","ready":"ˈɹɛdi","real":"ɹiːl","true":"tɹuː","clean":"kleːn","dirty":"ˈdɜːti","fast":"fɑːst","slow":"sləʊ","rich":"ɹɪt͡ʃ","poor":"poː","beautiful":"ˈbjuːtɪfəl","dark":"dɑːk","bright":"bɹaɪt","heavy":"ˈhe.vi","quiet":"ˈkwaɪ.ət","loud":"laʊd","safe":"seɪf","dangerous":"ˈdeɪnd͡ʒ(ə)ɹəs","possible":"ˈpɒsɪbl̩","difficult":"ˈdɪfɪkəlt","simple":"ˈsɪmpəl","serious":"ˈsɪə.ɹi.əs","famous":"ˈfeɪməs","strange":"ˈstɹeɪnd͡ʒ","common":"ˈkɒmən","not":"nɒt","very":"ˈvɛɹi","also":"ˈɔːl.səʊ","just":"d͡ʒʌst","now":"naʊ","then":"ðen","here":"hiːɹ","there":"ðeː(ɹ)","today":"təˈdeɪ","tomorrow":"təˈmɔɹoʊ","yesterday":"ˈjɛstədeɪ","always":"ˈɔː(l).weɪz","never":"ˈnɛv.ə(ɹ)","often":"ˈɑf(t)ən","sometimes":"ˈsʌmtaɪmz","usually":"ˈjuːʒju(ə)li","again":"əˈɡeɪn","still":"stɪl","already":"ɑlˈɹɛdi","almost":"ɔːl.ˈməʊst","enough":"iˈnʌf","well":"wɛl","soon":"suːn","together":"təˈɡɛð.ə(ɹ)","maybe":"ˈmeɪbi","really":"ˈɹɪəli","only":"ˈəʊn.li","even":"ˈiːvən","however":"hɑʊˈɛvə","instead":"ɪnˈstɛd","about":"əˈbɛʊt","after":"ˈæf.tə(ɹ)","before":"bɪˈfɔː","between":"bɪˈtwiːn","during":"ˈdjɔː.ɹɪŋ","without":"wɪθˈʌʊt","under":"ˈʊndə","over":"ˈəʊ.və(ɹ)","through":"θɹuː","against":"əˈɡeɪnst","because":"bɪˈkɒz","although":"ɔːlˈðəʊ","while":"waɪl","until":"ənˈtɪl","since":"sɪns","where":"wɛə(ɹ)","when":"ʍɛn","why":"waɪ","how":"hæŏ","which":"wɪt͡ʃ","whose":"huːz","one":"wan","two":"tuː","three":"θɹiː","many":"ˈmæni","much":"mʌt͡ʃ","some":"sɐm","all":"ɔːl","more":"ˈmɔː","most":"ˈməʊst","less":"lɛs","half":"hɑːf","both":"bəʊθ","each":"iːt͡ʃ","every":"ˈevri","several":"ˈsɛv(ə)ɹəl","hello":"həˈləʊ","hi":"haɪ","goodbye":"ɡədˈbaɪ","bye":"baɪ","yes":"jɛs","no":"nəʊ","please":"pliːz","thanks":"θæŋks","sorry":"ˈsɔɹi","welcome":"ˈwɛlkəm","okay":"ˌəˈkæɪ","mother":"ˈmʌðə(ɹ)","father":"ˈfaːðə","parents":"ˈpɛəɹənts","brother":"ˈbɹɐðɘ(ɹ)","sister":"ˈsɪs.tə","son":"sɒn","daughter":"ˈdɑ.tɚ","wife":"waɪf","husband":"ˈhʌz.bənd","baby":"ˈbeɪbi","boy":"bɔːə","girl":"ɡɵːl","person":"ˈpɜːsən","meeting":"ˈmiːtɪŋ","deadline":"ˈdɛdˌlaɪn","task":"tɑːsk","report":"ɹəˈpoːt","email":"ˈiːmeɪl","manager":"ˈmæn.ɪ.dʒə","boss":"bɑs","colleague":"ˈkɒliːɡ","salary":"ˈsælɚi","schedule":"ˈskɛ.dʒu.əl","office":"ˈɑfɪs","contract":"ˈkɒntɹækt","customer":"ˈkʌstəmə","client":"ˈklʌɪənt","deal":"diːl","goal":"ɡɒʊl","skill":"skɪl","experience":"ɪkˈspɪə.ɹɪəns","interview":"ˈɪntəvjuː","resume":"ɹəˈzjuːm","employee":"(ˌ)ɪm-","employer":"ɛmplɔɪˈə","department":"dɪˈpɑːtm(ə)nt","presentation":"ˌpɹizənˈteɪʃən","feedback":"ˈfiːdˌbæk","position":"pəˈzɪʃ(ə)n","responsibility":"ɹɪˌspɑnsəˈbɪlɪɾi","hire":"haɪə","manage":"ˈmænɪdʒ","address":"æˈdɹɛs","map":"mæp","ticket":"ˈtɪkɪt","bus":"bɐs","train":"tɹeɪn","station":"ˈsteɪʃən","airport":"ˈɛə.pɔːt","flight":"flaɪt","luggage":"ˈlʌɡɪd͡ʒ","passport":"ˈpɑːspɔːt","hotel":"(h)əʊˈtɛl","taxi":"ˈtæk.si","metro":"ˈmɛtɹəʊ","corner":"ˈkɔːnə(ɹ)","traffic":"ˈtɹæfɪk","left":"lɛft","straight":"stɹeɪt","turn":"tɜːn","cross":"kɹɑs","direction":"d(a)ɪˈɹɛk.ʃən","distance":"ˈdɪs.təns","restaurant":"ˈɹɛs.t(ə).ɹ(ə)nt","menu":"ˈmɛnju","bill":"bɪl","order":"ˈɔːdə","waiter":"ˈweɪtə","shop":"ʃɒp","store":"stɔː","price":"pɹaɪs","cash":"kæʃ","card":"kaːd","discount":"dɪsˈkaʊnt","market":"ˈmɑːkɪt","supermarket":"ˌsuːpəˈmɑːkɪt","receipt":"ɹɪˈsiːt","breakfast":"ˈbɹɛkfəst","lunch":"lʌnt͡ʃ","dinner":"ˈdɪnə","meat":"miːt","vegetable":"ˈvɛd͡ʒtəbəl","fruit":"fɹuːt","dish":"dɪʃ","delicious":"dɪˈlɪʃəs","hungry":"ˈhʌŋ.ɡɹi","thirsty":"ˈθɜː(ɹ)st.i","sugar":"ˈʃʊɡə(ɹ)","salt":"sɔlt","milk":"mɛlk","juice":"d͡ʒuːs","plate":"pleɪt","knife":"naɪf","fork":"fɔːk","spoon":"spuːn","cup":"kʌp","glass":"ɡlɑːs","bottle":"ˈbɑ.təl","leg":"leɪɡ","foot":"fʊt̚","finger":"ˈfɪŋəɹ","tooth":"tuːθ","mouth":"mʌʊθ","nose":"nəʊz","ear":"ɪə̯","stomach":"ˈstʌmək","doctor":"ˈdɒktə","hospital":"ˈhɒs.pɪ.tl̩","medicine":"ˈmed(ɪ).sn̩","pain":"peɪn","sick":"sɪk","healthy":"ˈhɛl.θi","pharmacy":"ˈfɑːməsi","talk":"toːk","spell":"spɛl","sentence":"ˈsɛntn̩t͡s","translate":"ˈtɹɛnzlæet","pronounce":"pɹəˈnaʊns","conversation":"ˌkɒn.vəˈseɪ.ʃən","meaning":"ˈmiːnɪŋ","mistake":"mɪˈsteɪk","advice":"ədˈvaɪs","information":"ˌɪnfəˈmeɪʃən","news":"njuːz","arrive":"əˈɹaɪv","travel":"ˈtɹævəl","visit":"ˈvɪzɪt","rent":"ɹɛnt","share":"ʃɛə","fill":"fɪl","sign":"saɪn","cancel":"ˈkænsl̩","confirm":"kənˈfɜːm","fix":"ˈfɪks","improve":"ɪmˈpɹuːv","practice":"ˈpɹæktɪs","recommend":"ɹɛkəˈmɛnd","suggest":"səˈdʒɛst","offer":"ˈɑfɚ","accept":"ækˈsɛpt","refuse":"ˈɹɛfjuːs","complain":"kəmˈpleɪn","apologize":"əˈpɒləd͡ʒaɪz","introduce":"ˌɪntɹəˈdjuːs","organize":"ˈɔːɡənaɪz","finish":"ˈfɪnɪʃ","prefer":"pɹɪˈfɜː","borrow":"ˈbɔɹoʊ","lend":"lɛnd","prepare":"pɹɪˈpɛə","join":"ˈdʒɔɪn","enjoy":"ənˈd͡ʒɔɪ","worry":"ˈwɒɹi","relax":"ɹɪˈlæks","remind":"ɹəˈmaɪnd","mention":"ˈmɛnʃən","describe":"dəˈskɹaɪb","compare":"kəmˈpɛə","discuss":"dɪsˈkʊs","solve":"sɒlv","afford":"əˈfɔːd","available":"əˈveɪləb(ə)l","comfortable":"ˈkʌm.fə.tə.bəl","expensive":"ɛkˈspɛnsɪv","cheap":"t͡ʃiːp","polite":"pəˈlaɪt","friendly":"ˈfɹɛndli","kind":"kaɪnd","careful":"ˈkɛːfəl","quick":"kwɪk","closed":"kləʊzd","empty":"ˈɛmpti","correct":"kəˈɹɛkt","wrong":"ɹɒŋ","similar":"ˈsɪmələ","nervous":"ˈnɜːvəs","excited":"ɪkˈsaɪtɪd","boring":"ˈbɔːɹɪŋ","interesting":"ˈɪnt(ə)ɹɛstɪŋ","useful":"ˈjuːsfəl","favorite":"ˈfeɪv.ɹɪt","afraid":"əˈfɹeɪd","proud":"pɹaʊd","honest":"ˈɒnɪst","brave":"bɹeɪv","solution":"səˈl(j)uːʃən","opportunity":"ˌɒp.əˈtjuː.nɪ.tɪ","journey":"ˈd͡ʒɜːni","trip":"tɹɪp","service":"ˈsɜːvɪs","quality":"ˈkwɒlɪti","furniture":"ˈfɜːnɪtʃə","appointment":"əˈpɔɪnt.mɛnt","calendar":"ˈkæl.ən.də","weekend":"wiːˈkɛnd","holiday":"ˈhɒlɪdeɪ","vacation":"veɪˈkeɪʃ(ə)n","moment":"ˈməʊmənt","red":"ɹɛd","blue":"bluː","green":"ɡɹiːn","yellow":"jɛlə","black":"blak","white":"waɪt","brown":"bɹaʊn","grey":"ɡɹeɪ","four":"foː","five":"fɑev","six":"sɪks","seven":"ˈsɛv.ən","eight":"eɪt","nine":"naɪn","ten":"tɛn","hundred":"ˈhʌndɚd","or":"ɔː(ɹ)","if":"ɪf","so":"səʊ"};
+const EX={"i":"I am a student.","you":"Can you help me?","he":"He is my brother.","she":"She works at a hospital.","we":"We live in a small town.","they":"They are my friends.","this":"This is my house.","that":"That car is fast.","who":"Who is that man?","people":"Many people came to the concert.","man":"That man is very tall.","child":"The child is playing in the park.","friend":"My friend lives next door.","family":"I love my family.","name":"My name is Anna.","have":"I have two cats.","do":"What do you do on weekends?","say":"Say it again, please.","get":"I get a letter every week.","make":"She makes great coffee.","go":"I go to work by bus.","know":"I know the answer.","take":"Take an umbrella with you.","see":"I can see the sea from here.","come":"Come to my party!","think":"I think you are right.","want":"I want some water.","give":"Give me your hand.","use":"Can I use your phone?","find":"I can't find my keys.","tell":"Tell me about your trip.","ask":"May I ask you something?","work":"I work in an office.","leave":"I leave home at eight.","call":"Call me tonight.","need":"I need your help.","become":"He wants to become a pilot.","mean":"What does this word mean?","keep":"Keep the change.","help":"Can you help me, please?","show":"Show me the way.","hear":"I can't hear you well.","play":"The kids play in the yard.","run":"I run every morning.","move":"Let's move the table.","live":"They live near the river.","believe":"I believe you.","bring":"Bring an umbrella with you.","happen":"What happened here?","write":"Write your name here.","sit":"Please sit down.","stand":"Don't stand in the doorway.","lose":"Don't lose your keys.","pay":"I will pay for the coffee.","meet":"Let's meet at noon.","include":"The price includes breakfast.","continue":"Let's continue tomorrow.","learn":"I want to learn to drive.","change":"I need to change my plans.","understand":"I don't understand this rule.","watch":"We watch films on weekends.","follow":"Follow me, please.","stop":"The bus stops here.","create":"She creates beautiful paintings.","speak":"Do you speak English?","read":"I read before bed.","spend":"I spend too much money.","grow":"Flowers grow in spring.","open":"Open the window, please.","walk":"I walk to work every day.","win":"I hope our team wins.","send":"I'll send you the photos.","build":"They are building a new bridge.","stay":"Stay here, I'll be back.","fall":"Be careful not to fall.","cut":"Cut the bread, please.","reach":"We reached the top of the hill.","remain":"Please remain seated.","eat":"We eat dinner at seven.","drink":"Drink more water.","sleep":"I sleep eight hours a night.","wait":"Wait for me, please.","sell":"They sell fresh fruit here.","drive":"She drives to work.","wear":"I wear glasses.","close":"Please close the door.","pull":"Pull the door, don't push it.","push":"Push the door to open it.","carry":"Can you carry this bag?","break":"Don't break the glass.","hope":"I hope you feel better.","decide":"We decided to stay home.","remember":"I remember your face.","forget":"Don't forget your keys.","explain":"Can you explain this rule?","return":"I'll return the book tomorrow.","save":"I save money every month.","allow":"Smoking is not allowed here.","add":"Add some sugar to the tea.","throw":"Don't throw rubbish on the floor.","catch":"Catch the ball!","draw":"She likes to draw animals.","time":"We don't have much time.","year":"I will see you next year.","day":"Have a nice day!","week":"See you next week.","month":"I'll visit you next month.","hour":"The trip takes an hour.","minute":"Wait a minute, please.","morning":"I drink coffee in the morning.","night":"Good night, sleep well.","way":"This is the best way to learn.","thing":"One more thing, please.","life":"Life is beautiful.","world":"She wants to see the world.","hand":"Please raise your hand.","eye":"Close your eyes.","head":"My head hurts.","face":"She has a kind face.","heart":"My heart is beating fast.","word":"I don't know this word.","place":"This is a nice place.","home":"I am going home.","house":"They live in a big house.","room":"My room is small but cosy.","door":"Please close the door.","water":"Can I have some water?","book":"This book is really interesting.","story":"Tell me a story.","school":"The children go to school.","city":"Moscow is a big city.","road":"This road leads to the sea.","car":"My car is in the garage.","problem":"We have a small problem.","question":"I have a question.","answer":"I don't know the answer.","idea":"That is a great idea!","fact":"That's an interesting fact.","reason":"There's no reason to worry.","number":"What's your phone number?","group":"We work in a small group.","part":"This is the best part.","side":"Walk on the right side.","end":"We're near the end.","point":"That's a good point.","case":"In that case, let's wait.","area":"This is a quiet area.","business":"Business is going well.","government":"The government raised taxes.","company":"She works for a big company.","job":"I have a new job.","team":"Our team won the game.","war":"The war lasted four years.","health":"Take care of your health.","music":"I love listening to music.","light":"Turn on the light.","color":"What's your favorite color?","sound":"I heard a strange sound.","voice":"She has a beautiful voice.","line":"Draw a straight line.","paper":"I need a sheet of paper.","mind":"Are you out of your mind?","love":"Love is the most important thing.","power":"Knowledge is power.","language":"English is a useful language.","weather":"The weather is nice today.","sky":"There are no clouds in the sky.","sea":"We swam in the sea.","fire":"They sat by the fire.","tree":"A bird is sitting in the tree.","animal":"The dog is my favorite animal.","dog":"My dog likes to run.","cat":"The cat is sleeping on the sofa.","bird":"A bird is singing outside.","fish":"We caught a big fish.","flower":"She gave me a flower.","mountain":"We climbed the mountain.","river":"The river is very wide.","field":"The cows are in the field.","street":"The street is very busy.","building":"That building is very tall.","table":"Put the plates on the table.","chair":"Sit on this chair.","key":"I lost my house key.","coffee":"I drink coffee every morning.","tea":"Would you like some tea?","good":"This is a good film.","new":"I bought a new phone.","first":"This is my first time here.","last":"This is the last bus.","long":"It was a long day.","own":"I have my own room.","other":"Show me the other shoes.","old":"This is an old building.","right":"You are right.","big":"They live in a big house.","high":"The mountain is very high.","different":"We have different tastes.","small":"I have a small car.","large":"I ordered a large pizza.","next":"Get off at the next stop.","early":"I woke up early today.","young":"She is still very young.","few":"Only a few people came.","public":"We met in a public place.","bad":"I had a bad day.","same":"We have the same bag.","able":"I want to be able to swim.","free":"Are you free this evening?","full":"The bus is already full.","sure":"Are you sure about that?","low":"Prices are very low here.","easy":"The test was easy.","hard":"This question is hard.","late":"Sorry, I am late.","far":"The station is not far.","cold":"It's cold outside.","warm":"Wear something warm.","strong":"He is very strong.","weak":"I feel weak after the illness.","happy":"I am happy to see you.","angry":"Please don't be angry.","busy":"I'm busy right now.","ready":"Are you ready to go?","real":"Is this a real diamond?","true":"Is it really true?","clean":"The room is clean now.","dirty":"Your shoes are dirty.","fast":"This is a fast car.","slow":"The internet is very slow.","rich":"He is a rich man.","poor":"They were very poor.","beautiful":"What a beautiful view!","dark":"It's getting dark outside.","bright":"The sun is very bright.","heavy":"This box is too heavy.","quiet":"Please be quiet.","safe":"Is this area safe?","dangerous":"Swimming here is dangerous.","possible":"Is it possible to change my ticket?","difficult":"This exercise is difficult.","serious":"This is a serious problem.","famous":"He is a famous actor.","strange":"I heard a strange noise.","common":"This is a common mistake.","not":"I'm not hungry right now.","very":"She is very kind.","also":"I also speak French.","just":"I just finished work.","now":"We need to go now.","then":"First eat, then we'll talk.","today":"What's the date today?","tomorrow":"See you tomorrow.","yesterday":"I called you yesterday.","always":"She is always on time.","never":"I never drink coffee at night.","often":"We often go to the park.","sometimes":"Sometimes I work late.","usually":"I usually wake up at seven.","again":"Try again a bit later.","still":"Are you still at work?","already":"I have already eaten.","almost":"We're almost there.","enough":"That's enough, thank you.","well":"She speaks English well.","together":"Let's do it together.","maybe":"Maybe we can meet later.","really":"I really like this song.","only":"I have only one question.","even":"He didn't even say hello.","however":"It's expensive; however, it's worth it.","instead":"Let's take tea instead.","about":"Tell me about your day.","after":"Let's meet after lunch.","before":"Call me before you leave.","between":"Sit between us.","without":"I can't see without my glasses.","under":"The cat is under the table.","over":"There's a bridge over the river.","through":"We walked through the park.","against":"Are you for or against the plan?","while":"I read while I wait.","until":"Wait until I come back.","since":"I've been busy since morning.","where":"Where do you live?","when":"When does the shop open?","why":"Why are you laughing?","how":"How do you spell your name?","which":"Which dress do you like?","whose":"Whose bag is this?","one":"Can I have one more, please?","two":"I have two sisters.","three":"We waited for three hours.","many":"How many people came?","much":"How much does it cost?","some":"Would you like some water?","all":"All the tickets are sold.","more":"Can I have some more?","most":"Most people agree.","less":"Try to spend less money.","half":"I'll have half a cup.","both":"Both answers are correct.","each":"Each child got a gift.","hello":"Hello, how are you?","bye":"Bye, take care!","yes":"Yes, I agree with you.","please":"Please sit down.","thanks":"Thanks for your help.","sorry":"Sorry, I'm late.","welcome":"Welcome to our home!","mother":"My mother cooks very well.","father":"His father is a teacher.","brother":"I have an older brother.","sister":"My sister studies medicine.","son":"Their son is five years old.","daughter":"My daughter loves to draw.","wife":"His wife works at a bank.","husband":"Her husband cooks dinner.","baby":"The baby is sleeping.","boy":"The boy is playing football.","girl":"The girl is singing a song.","person":"She is a very kind person.","meeting":"The meeting starts at ten.","deadline":"The deadline is on Friday.","project":"We finished the project on time.","task":"This task is difficult.","report":"I need to write a report.","email":"I'll send you an email.","boss":"My boss is on holiday.","schedule":"Check your schedule.","office":"I work in a big office.","contract":"Please sign the contract.","customer":"The customer is always right.","deal":"It's a good deal.","goal":"My goal is to learn English.","experience":"She has a lot of experience.","interview":"I have a job interview today.","resume":"Please send me your resume.","employee":"He is a new employee.","responsibility":"Safety is everyone's responsibility.","hire":"We want to hire a designer.","manage":"She manages a small team.","address":"What is your address?","map":"Let's look at the map.","ticket":"I bought a train ticket.","train":"The train leaves at noon.","station":"Meet me at the station.","flight":"My flight was cancelled.","passport":"Don't forget your passport.","corner":"The shop is on the corner.","traffic":"There is a lot of traffic today.","left":"Turn left at the lights.","straight":"Go straight ahead.","turn":"Turn right here.","cross":"Cross the street carefully.","direction":"We walked in the wrong direction.","distance":"The distance is about two kilometres.","order":"Are you ready to order?","waiter":"The waiter brought our food.","shop":"I need to go to the shop.","store":"The store is closed on Sunday.","price":"The price is too high.","cash":"I'll pay in cash.","card":"Can I pay by card?","discount":"They gave me a discount.","market":"We buy fruit at the market.","supermarket":"I'm going to the supermarket.","receipt":"Keep the receipt, please.","breakfast":"I have breakfast at seven.","lunch":"Let's have lunch together.","dinner":"Dinner is ready.","meat":"I don't eat meat.","fruit":"An apple is a healthy fruit.","dish":"This dish is very tasty.","thirsty":"I'm thirsty, I need some water.","sugar":"Do you take sugar in your tea?","salt":"Add a little salt.","milk":"I drink milk every morning.","juice":"I'd like some orange juice.","plate":"Put the food on the plate.","fork":"Eat with a fork.","spoon":"I need a spoon for the soup.","cup":"I'd like a cup of coffee.","glass":"Pour me a glass of water.","bottle":"Pass me the bottle, please.","hair":"She has long hair.","arm":"He broke his arm.","leg":"My leg hurts.","foot":"My foot is cold.","finger":"I cut my finger.","mouth":"Open your mouth, please.","nose":"My nose is blocked.","ear":"I have a pain in my ear.","stomach":"I have a stomach ache.","doctor":"You should see a doctor.","medicine":"Take this medicine twice a day.","pain":"I feel a sharp pain.","sick":"I feel sick today.","healthy":"She eats healthy food.","talk":"Can we talk for a minute?","repeat":"Could you repeat that?","spell":"How do you spell it?","sentence":"Make a sentence with this word.","pronounce":"How do you pronounce this word?","conversation":"We had a nice conversation.","mistake":"Everyone makes mistakes.","advice":"Can I give you some advice?","information":"I need more information.","news":"I have some good news.","arrive":"We arrived late at night.","travel":"I love to travel.","rent":"We rent a small flat.","share":"Let's share the pizza.","receive":"I received your message.","check":"Check your email.","fill":"Fill in this form, please.","sign":"Sign here, please.","cancel":"I had to cancel the meeting.","fix":"Can you fix my computer?","improve":"I want to improve my English.","practice":"You must practice every day.","recommend":"I recommend this book.","suggest":"I suggest we leave early.","offer":"They offered me a job.","accept":"I accept your offer.","refuse":"She refused to help.","complain":"He always complains about work.","apologize":"I apologize for the delay.","introduce":"Let me introduce my friend.","finish":"I finished my homework.","prefer":"I prefer tea to coffee.","borrow":"Can I borrow your pen?","lend":"Can you lend me ten dollars?","prepare":"I need to prepare for the test.","join":"Would you like to join us?","enjoy":"I enjoy reading.","worry":"Don't worry about it.","relax":"I relax by listening to music.","describe":"Can you describe him?","compare":"Let's compare the two options.","discuss":"Let's discuss the plan.","afford":"I can't afford a new car.","available":"Is this table available?","comfortable":"This chair is very comfortable.","polite":"He is always polite.","friendly":"The staff was very friendly.","kind":"Thank you, that's very kind.","careful":"Be careful on the road.","quick":"Let's have a quick lunch.","empty":"The bottle is empty.","excited":"I'm excited about the trip.","boring":"The film was boring.","afraid":"I'm afraid of spiders.","proud":"I'm proud of you.","honest":"Please be honest with me.","brave":"He is a brave soldier.","opportunity":"This is a great opportunity.","trip":"Have a good trip!","service":"The service here is excellent.","quality":"The quality is very good.","furniture":"We bought new furniture.","appointment":"I have a doctor's appointment.","calendar":"Mark the date on the calendar.","weekend":"What are your plans for the weekend?","holiday":"We're going on holiday next week.","vacation":"I really need a vacation.","moment":"Wait a moment, please.","red":"She is wearing a red dress.","blue":"The sky is blue today.","green":"The grass is green.","black":"He drives a black car.","white":"I need a white shirt.","brown":"She has brown eyes.","grey":"He wore a grey suit.","four":"I have four tickets.","five":"The shop opens at five.","seven":"There are seven days in a week.","eight":"She is eight years old.","nine":"The film starts at nine.","ten":"I'll be there in ten minutes.","hundred":"It costs a hundred dollars.","thousand":"There were a thousand people.","but":"I'd love to, but I'm busy.","or":"Tea or coffee?","if":"Call me if you need help.","so":"I was tired, so I went to bed.","woman":"The woman is reading a book.","be":"I want to be a doctor.","look":"Look at this photo.","feel":"I feel tired today.","try":"Try to relax.","buy":"I want to buy a gift.","begin":"The film begins at eight.","money":"I don't have much money.","important":"This is very important.","hi":"Hi, nice to meet you.","goodbye":"Goodbye, see you tomorrow.","no":"No, thank you.","parents":"My parents live abroad.","neighbor":"Our neighbor has a dog.","manager":"Our manager is very kind.","colleague":"She is my colleague.","salary":"He earns a good salary.","client":"We have a new client.","skill":"Cooking is a useful skill.","employer":"My employer pays well.","department":"She works in the sales department.","presentation":"I gave a presentation today.","feedback":"Thank you for your feedback.","position":"He applied for the position.","bus":"The bus is late again.","airport":"The airport is far from here.","luggage":"My luggage is very heavy.","hotel":"We stayed at a nice hotel.","taxi":"Let's take a taxi.","restaurant":"Let's eat at a restaurant.","menu":"Can I see the menu?","bill":"Can we have the bill, please?","vegetable":"A carrot is a vegetable.","delicious":"This cake is delicious.","hungry":"I'm very hungry.","knife":"Be careful with the knife.","tooth":"My tooth really hurts.","hospital":"He is in the hospital.","pharmacy":"The pharmacy is near the station.","monday":"I have a meeting on Monday.","tuesday":"We met on Tuesday.","wednesday":"The class is on Wednesday.","thursday":"I'm free on Thursday.","friday":"Let's go out on Friday.","saturday":"We relax on Saturday.","sunday":"I sleep late on Sunday.","yellow":"I have a yellow umbrella.","expensive":"This phone is too expensive.","cheap":"I found a cheap hotel.","interesting":"This is an interesting story.","useful":"This app is very useful.","favorite":"Blue is my favorite color.","wrong":"You have the wrong number.","correct":"Your answer is correct.","closed":"The shop is closed today.","nervous":"I'm nervous before exams.","visit":"Let's visit your grandmother.","confirm":"Please confirm your booking.","seem":"She seems happy today.","teach":"She teaches mathematics.","choose":"Choose any color you like.","agree":"I agree with you.","count":"Let's count the money.","hold":"Hold my hand.","food":"The food here is great.","country":"France is a beautiful country.","example":"Give me an example, please.","body":"Exercise is good for the body.","fear":"He has no fear at all.","truth":"Tell me the truth.","window":"Open the window for fresh air.","phone":"My phone is dead.","computer":"I work on my computer all day.","clothes":"Put on some warm clothes.","bread":"I bought some fresh bread.","great":"We had a great time.","little":"The little girl is crying.","near":"Is there a shop near here?","hot":"The soup is very hot.","sad":"Why are you so sad?","tired":"I'm tired after work.","loud":"The music is too loud.","simple":"The recipe is very simple.","here":"Come here, please.","there":"Put it over there.","soon":"I'll be back soon.","during":"Don't talk during the film.","because":"I'm tired because I worked late.","although":"Although it rained, we had fun.","every":"I go running every morning.","several":"I called him several times.","okay":"Okay, let's go.","metro":"Let's take the metro.","translate":"Can you translate this?","meaning":"What's the meaning of this word?","organize":"Let's organize a party.","remind":"Remind me to call her.","mention":"He didn't mention the price.","solve":"We need to solve this problem.","similar":"Our ideas are similar.","solution":"There's a simple solution.","journey":"It was a long journey.","six":"I woke up at six."};
+
+/* Переводы примеров (RU). Заполняется в фазе 1б; пока заглушка. */
+const EXRU={"i":"Я студент.","you":"Ты можешь мне помочь?","he":"Он мой брат.","she":"Она работает в больнице.","we":"Мы живём в маленьком городе.","they":"Они мои друзья.","this":"Это мой дом.","that":"Та машина быстрая.","who":"Кто тот мужчина?","people":"Много людей пришло на концерт.","man":"Тот мужчина очень высокий.","woman":"Женщина читает книгу.","child":"Ребёнок играет в парке.","friend":"Мой друг живёт по соседству.","family":"Я люблю свою семью.","name":"Меня зовут Анна.","be":"Я хочу быть врачом.","have":"У меня есть две кошки.","do":"Что ты делаешь по выходным?","say":"Скажи это ещё раз, пожалуйста.","get":"Я получаю письмо каждую неделю.","make":"Она делает отличный кофе.","go":"Я езжу на работу на автобусе.","know":"Я знаю ответ.","take":"Возьми с собой зонт.","see":"Отсюда я вижу море.","come":"Приходи на мою вечеринку!","think":"Я думаю, ты прав.","look":"Посмотри на это фото.","want":"Я хочу воды.","give":"Дай мне руку.","use":"Можно воспользоваться твоим телефоном?","find":"Я не могу найти ключи.","tell":"Расскажи мне о своей поездке.","ask":"Можно тебя кое о чём спросить?","work":"Я работаю в офисе.","feel":"Сегодня я чувствую усталость.","try":"Постарайся расслабиться.","leave":"Я ухожу из дома в восемь.","call":"Позвони мне вечером.","need":"Мне нужна твоя помощь.","mean":"Что значит это слово?","help":"Можешь мне помочь, пожалуйста?","show":"Покажи мне дорогу.","play":"Дети играют во дворе.","run":"Я бегаю каждое утро.","live":"Они живут у реки.","believe":"Я тебе верю.","write":"Напиши здесь своё имя.","read":"Я читаю перед сном.","eat":"Мы ужинаем в семь.","drink":"Пей больше воды.","sleep":"Я сплю восемь часов в сутки.","buy":"Я хочу купить подарок.","pay":"Я заплачу за кофе.","meet":"Давай встретимся в полдень.","open":"Открой окно, пожалуйста.","close":"Пожалуйста, закрой дверь.","keep":"Оставь сдачу себе.","begin":"Фильм начинается в восемь.","understand":"Я не понимаю это правило.","remember":"Я помню твоё лицо.","forget":"Не забудь ключи.","time":"У нас мало времени.","year":"Увидимся в следующем году.","day":"Хорошего дня!","way":"Это лучший способ учиться.","thing":"Ещё одна вещь, пожалуйста.","life":"Жизнь прекрасна.","world":"Она хочет увидеть мир.","hand":"Подними руку, пожалуйста.","eye":"Закрой глаза.","head":"У меня болит голова.","word":"Я не знаю это слово.","place":"Это приятное место.","home":"Я иду домой.","water":"Можно мне воды?","money":"У меня мало денег.","book":"Эта книга очень интересная.","problem":"У нас небольшая проблема.","question":"У меня есть вопрос.","idea":"Это отличная идея!","good":"Это хороший фильм.","new":"Я купил новый телефон.","big":"Они живут в большом доме.","small":"У меня маленькая машина.","old":"Это старое здание.","long":"Это был длинный день.","right":"Ты прав.","different":"У нас разные вкусы.","important":"Это очень важно.","easy":"Тест был лёгкий.","hard":"Этот вопрос трудный.","happy":"Я рад тебя видеть.","beautiful":"Какой красивый вид!","hello":"Привет, как дела?","hi":"Привет, приятно познакомиться.","goodbye":"До свидания, увидимся завтра.","bye":"Пока, береги себя!","please":"Пожалуйста, садись.","thanks":"Спасибо за помощь.","sorry":"Извини, я опоздал.","welcome":"Добро пожаловать к нам домой!","yes":"Да, я с тобой согласен.","no":"Нет, спасибо.","mother":"Моя мама очень хорошо готовит.","father":"Его отец — учитель.","parents":"Мои родители живут за границей.","brother":"У меня есть старший брат.","sister":"Моя сестра изучает медицину.","son":"Их сыну пять лет.","daughter":"Моя дочь любит рисовать.","wife":"Его жена работает в банке.","husband":"Её муж готовит ужин.","baby":"Малыш спит.","boy":"Мальчик играет в футбол.","girl":"Девочка поёт песню.","neighbor":"У нашего соседа есть собака.","person":"Она очень добрый человек.","meeting":"Совещание начинается в десять.","deadline":"Крайний срок — в пятницу.","project":"Мы закончили проект вовремя.","task":"Эта задача трудная.","report":"Мне нужно написать отчёт.","email":"Я отправлю тебе письмо.","manager":"Наш руководитель очень добрый.","boss":"Мой начальник в отпуске.","colleague":"Она моя коллега.","salary":"Он получает хорошую зарплату.","schedule":"Проверь своё расписание.","office":"Я работаю в большом офисе.","contract":"Пожалуйста, подпиши договор.","customer":"Клиент всегда прав.","client":"У нас новый клиент.","deal":"Это выгодная сделка.","goal":"Моя цель — выучить английский.","skill":"Готовка — полезный навык.","experience":"У неё большой опыт.","interview":"Сегодня у меня собеседование.","employee":"Он новый сотрудник.","employer":"Мой работодатель хорошо платит.","department":"Она работает в отделе продаж.","presentation":"Сегодня я провёл презентацию.","feedback":"Спасибо за обратную связь.","position":"Он подал заявку на должность.","responsibility":"Безопасность — обязанность каждого.","hire":"Мы хотим нанять дизайнера.","manage":"Она руководит маленькой командой.","address":"Какой у тебя адрес?","map":"Давай посмотрим на карту.","ticket":"Я купил билет на поезд.","bus":"Автобус снова опаздывает.","train":"Поезд отправляется в полдень.","station":"Встретимся на вокзале.","airport":"Аэропорт далеко отсюда.","flight":"Мой рейс отменили.","luggage":"Мой багаж очень тяжёлый.","passport":"Не забудь паспорт.","hotel":"Мы остановились в хорошем отеле.","taxi":"Давай возьмём такси.","corner":"Магазин на углу.","traffic":"Сегодня большие пробки.","left":"Поверни налево у светофора.","straight":"Иди прямо.","turn":"Поверни здесь направо.","cross":"Переходи улицу осторожно.","direction":"Мы шли не в ту сторону.","distance":"Расстояние около двух километров.","restaurant":"Давай поедим в ресторане.","menu":"Можно меню?","bill":"Можно счёт, пожалуйста?","order":"Вы готовы сделать заказ?","waiter":"Официант принёс нашу еду.","shop":"Мне нужно сходить в магазин.","price":"Цена слишком высокая.","cash":"Я заплачу наличными.","discount":"Мне дали скидку.","market":"Мы покупаем фрукты на рынке.","breakfast":"Я завтракаю в семь.","lunch":"Давай пообедаем вместе.","dinner":"Ужин готов.","meat":"Я не ем мясо.","vegetable":"Морковь — это овощ.","fruit":"Яблоко — полезный фрукт.","dish":"Это блюдо очень вкусное.","delicious":"Этот торт очень вкусный.","hungry":"Я очень голоден.","thirsty":"Я хочу пить, мне нужна вода.","sugar":"Ты пьёшь чай с сахаром?","salt":"Добавь немного соли.","milk":"Я пью молоко каждое утро.","juice":"Я бы хотел апельсиновый сок.","plate":"Положи еду на тарелку.","knife":"Осторожно с ножом.","fork":"Ешь вилкой.","spoon":"Мне нужна ложка для супа.","cup":"Я бы хотел чашку кофе.","glass":"Налей мне стакан воды.","bottle":"Передай мне бутылку, пожалуйста.","hair":"У неё длинные волосы.","arm":"Он сломал руку.","leg":"У меня болит нога.","foot":"У меня замёрзла ступня.","finger":"Я порезал палец.","tooth":"У меня сильно болит зуб.","doctor":"Тебе стоит сходить к врачу.","hospital":"Он в больнице.","medicine":"Принимай это лекарство дважды в день.","pain":"Я чувствую острую боль.","sick":"Сегодня я плохо себя чувствую.","healthy":"Она ест здоровую пищу.","pharmacy":"Аптека рядом с вокзалом.","monday":"У меня встреча в понедельник.","tuesday":"Мы встретились во вторник.","wednesday":"Занятие в среду.","thursday":"В четверг я свободен.","friday":"Давай куда-нибудь сходим в пятницу.","saturday":"По субботам мы отдыхаем.","sunday":"По воскресеньям я сплю допоздна.","red":"На ней красное платье.","blue":"Сегодня небо синее.","green":"Трава зелёная.","yellow":"У меня жёлтый зонт.","black":"Он водит чёрную машину.","white":"Мне нужна белая рубашка.","brown":"У неё карие глаза.","expensive":"Этот телефон слишком дорогой.","cheap":"Я нашёл дешёвый отель.","comfortable":"Этот стул очень удобный.","friendly":"Персонал был очень дружелюбный.","kind":"Спасибо, это очень мило.","careful":"Будь осторожен на дороге.","interesting":"Это интересная история.","useful":"Это приложение очень полезное.","favorite":"Синий — мой любимый цвет.","afraid":"Я боюсь пауков.","wrong":"Вы ошиблись номером.","correct":"Твой ответ правильный.","empty":"Бутылка пустая.","closed":"Магазин сегодня закрыт.","nervous":"Я нервничаю перед экзаменами.","excited":"Я в восторге от поездки.","arrive":"Мы приехали поздно ночью.","travel":"Я люблю путешествовать.","visit":"Давай навестим твою бабушку.","rent":"Мы снимаем маленькую квартиру.","share":"Давай разделим пиццу.","receive":"Я получил твоё сообщение.","check":"Проверь почту.","fill":"Заполни эту форму, пожалуйста.","sign":"Подпиши здесь, пожалуйста.","cancel":"Мне пришлось отменить встречу.","confirm":"Пожалуйста, подтверди бронь.","fix":"Ты можешь починить мой компьютер?","improve":"Я хочу улучшить свой английский.","practice":"Нужно практиковаться каждый день.","recommend":"Я рекомендую эту книгу.","suggest":"Я предлагаю выйти пораньше.","offer":"Мне предложили работу.","accept":"Я принимаю твоё предложение.","refuse":"Она отказалась помочь.","complain":"Он всегда жалуется на работу.","apologize":"Я извиняюсь за задержку.","introduce":"Позволь представить моего друга.","finish":"Я закончил домашнюю работу.","prefer":"Я предпочитаю чай кофе.","borrow":"Можно одолжить твою ручку?","enjoy":"Я люблю читать.","worry":"Не переживай об этом.","relax":"Я расслабляюсь, слушая музыку.","prepare":"Мне нужно подготовиться к тесту.","describe":"Можешь его описать?","discuss":"Давай обсудим план.","weekend":"Какие у тебя планы на выходные?","holiday":"На следующей неделе мы едем в отпуск.","vacation":"Мне очень нужен отпуск.","mistake":"Все совершают ошибки.","advice":"Можно дать тебе совет?","news":"У меня хорошие новости.","trip":"Хорошей поездки!","appointment":"У меня приём у врача.","opportunity":"Это отличная возможность.","seem":"Сегодня она кажется счастливой.","become":"Он хочет стать пилотом.","hear":"Я тебя плохо слышу.","move":"Давай подвинем стол.","bring":"Возьми с собой зонт.","happen":"Что здесь случилось?","sit":"Пожалуйста, садись.","stand":"Не стой в дверях.","lose":"Не потеряй ключи.","include":"Цена включает завтрак.","continue":"Давай продолжим завтра.","learn":"Я хочу научиться водить.","change":"Мне нужно изменить планы.","watch":"По выходным мы смотрим фильмы.","follow":"Следуй за мной, пожалуйста.","stop":"Автобус останавливается здесь.","create":"Она создаёт красивые картины.","speak":"Ты говоришь по-английски?","spend":"Я трачу слишком много денег.","grow":"Цветы растут весной.","walk":"Я хожу на работу пешком каждый день.","win":"Надеюсь, наша команда победит.","teach":"Она преподаёт математику.","send":"Я отправлю тебе фотографии.","build":"Они строят новый мост.","stay":"Останься здесь, я вернусь.","fall":"Осторожно, не упади.","cut":"Порежь хлеб, пожалуйста.","reach":"Мы достигли вершины холма.","remain":"Пожалуйста, оставайтесь на местах.","wait":"Подожди меня, пожалуйста.","sell":"Здесь продают свежие фрукты.","drive":"Она ездит на работу за рулём.","wear":"Я ношу очки.","pull":"Тяни дверь, не толкай её.","push":"Толкни дверь, чтобы открыть.","carry":"Можешь понести эту сумку?","break":"Не разбей стакан.","hope":"Надеюсь, тебе станет лучше.","choose":"Выбери любой цвет, который нравится.","decide":"Мы решили остаться дома.","explain":"Можешь объяснить это правило?","return":"Я верну книгу завтра.","save":"Я откладываю деньги каждый месяц.","agree":"Я с тобой согласен.","allow":"Здесь курить нельзя.","add":"Добавь сахар в чай.","throw":"Не бросай мусор на пол.","catch":"Лови мяч!","draw":"Она любит рисовать животных.","count":"Давай посчитаем деньги.","hold":"Держи меня за руку.","week":"Увидимся на следующей неделе.","month":"Я навещу тебя в следующем месяце.","hour":"Поездка занимает час.","minute":"Подожди минуту, пожалуйста.","morning":"Утром я пью кофе.","night":"Спокойной ночи, спи крепко.","face":"У неё доброе лицо.","heart":"Моё сердце быстро бьётся.","house":"Они живут в большом доме.","room":"Моя комната маленькая, но уютная.","door":"Пожалуйста, закрой дверь.","food":"Еда здесь отличная.","story":"Расскажи мне историю.","school":"Дети ходят в школу.","city":"Москва — большой город.","country":"Франция — красивая страна.","road":"Эта дорога ведёт к морю.","car":"Моя машина в гараже.","answer":"Я не знаю ответа.","fact":"Это интересный факт.","reason":"Нет причин волноваться.","number":"Какой у тебя номер телефона?","group":"Мы работаем в маленькой группе.","part":"Это лучшая часть.","side":"Иди по правой стороне.","end":"Мы близко к концу.","point":"Это хорошая мысль.","case":"В таком случае давай подождём.","example":"Приведи пример, пожалуйста.","area":"Это тихий район.","business":"Дела идут хорошо.","government":"Правительство подняло налоги.","company":"Она работает в большой компании.","job":"У меня новая работа.","team":"Наша команда выиграла матч.","war":"Война длилась четыре года.","health":"Береги своё здоровье.","music":"Я люблю слушать музыку.","light":"Включи свет.","color":"Какой твой любимый цвет?","sound":"Я услышал странный звук.","voice":"У неё красивый голос.","line":"Нарисуй прямую линию.","paper":"Мне нужен лист бумаги.","body":"Спорт полезен для тела.","mind":"Ты в своём уме?","love":"Любовь — самое важное.","fear":"У него совсем нет страха.","truth":"Скажи мне правду.","power":"Знание — сила.","language":"Английский — полезный язык.","weather":"Сегодня хорошая погода.","sky":"На небе нет облаков.","sea":"Мы купались в море.","fire":"Они сидели у огня.","tree":"Птица сидит на дереве.","animal":"Собака — моё любимое животное.","dog":"Моя собака любит бегать.","cat":"Кошка спит на диване.","bird":"Снаружи поёт птица.","fish":"Мы поймали большую рыбу.","flower":"Она подарила мне цветок.","mountain":"Мы поднялись на гору.","river":"Река очень широкая.","field":"Коровы в поле.","street":"Улица очень оживлённая.","building":"То здание очень высокое.","table":"Поставь тарелки на стол.","chair":"Сядь на этот стул.","window":"Открой окно для свежего воздуха.","key":"Я потерял ключ от дома.","phone":"У меня сел телефон.","computer":"Я весь день работаю за компьютером.","clothes":"Надень тёплую одежду.","bread":"Я купил свежий хлеб.","coffee":"Я пью кофе каждое утро.","tea":"Хочешь чаю?","first":"Я здесь впервые.","last":"Это последний автобус.","great":"Мы отлично провели время.","little":"Маленькая девочка плачет.","own":"У меня своя комната.","other":"Покажи мне другие туфли.","high":"Гора очень высокая.","large":"Я заказал большую пиццу.","next":"Выходи на следующей остановке.","early":"Сегодня я проснулся рано.","young":"Она ещё очень молодая.","few":"Пришло лишь несколько человек.","public":"Мы встретились в общественном месте.","bad":"У меня был плохой день.","same":"У нас одинаковые сумки.","able":"Я хочу уметь плавать.","free":"Ты свободен сегодня вечером?","full":"Автобус уже полный.","sure":"Ты в этом уверен?","low":"Здесь очень низкие цены.","late":"Извини, я опоздал.","far":"Станция недалеко.","near":"Здесь рядом есть магазин?","hot":"Суп очень горячий.","cold":"На улице холодно.","warm":"Надень что-нибудь тёплое.","strong":"Он очень сильный.","weak":"После болезни я чувствую слабость.","sad":"Почему ты такой грустный?","angry":"Пожалуйста, не злись.","tired":"Я устал после работы.","busy":"Я сейчас занят.","ready":"Ты готов идти?","real":"Это настоящий бриллиант?","true":"Это действительно правда?","clean":"Теперь комната чистая.","dirty":"У тебя грязная обувь.","fast":"Это быстрая машина.","slow":"Интернет очень медленный.","rich":"Он богатый человек.","poor":"Они были очень бедны.","dark":"На улице темнеет.","bright":"Солнце очень яркое.","heavy":"Эта коробка слишком тяжёлая.","quiet":"Пожалуйста, тихо.","loud":"Музыка слишком громкая.","safe":"Этот район безопасный?","dangerous":"Купаться здесь опасно.","possible":"Можно ли поменять билет?","difficult":"Это упражнение трудное.","simple":"Рецепт очень простой.","serious":"Это серьёзная проблема.","famous":"Он известный актёр.","strange":"Я услышал странный шум.","common":"Это распространённая ошибка.","not":"Я сейчас не голоден.","very":"Она очень добрая.","also":"Я также говорю по-французски.","just":"Я только что закончил работу.","now":"Нам нужно идти сейчас.","then":"Сначала поешь, потом поговорим.","here":"Иди сюда, пожалуйста.","there":"Положи это вон там.","today":"Какое сегодня число?","tomorrow":"Увидимся завтра.","yesterday":"Я звонил тебе вчера.","always":"Она всегда вовремя.","never":"Я никогда не пью кофе на ночь.","often":"Мы часто ходим в парк.","sometimes":"Иногда я работаю допоздна.","usually":"Обычно я просыпаюсь в семь.","again":"Попробуй ещё раз чуть позже.","still":"Ты всё ещё на работе?","already":"Я уже поел.","almost":"Мы почти на месте.","enough":"Достаточно, спасибо.","well":"Она хорошо говорит по-английски.","soon":"Я скоро вернусь.","together":"Давай сделаем это вместе.","maybe":"Может быть, встретимся позже.","really":"Мне очень нравится эта песня.","only":"У меня только один вопрос.","even":"Он даже не поздоровался.","however":"Это дорого, однако оно того стоит.","instead":"Давай вместо этого возьмём чай.","about":"Расскажи мне о своём дне.","after":"Давай встретимся после обеда.","before":"Позвони мне перед уходом.","between":"Сядь между нами.","during":"Не разговаривай во время фильма.","without":"Я не вижу без очков.","under":"Кошка под столом.","over":"Над рекой есть мост.","through":"Мы прошли через парк.","against":"Ты за или против плана?","because":"Я устал, потому что работал допоздна.","although":"Хотя шёл дождь, нам было весело.","while":"Я читаю, пока жду.","until":"Подожди, пока я не вернусь.","since":"Я занят с самого утра.","where":"Где ты живёшь?","when":"Когда открывается магазин?","why":"Почему ты смеёшься?","how":"Как пишется твоё имя?","which":"Какое платье тебе нравится?","whose":"Чья это сумка?","one":"Можно мне ещё один, пожалуйста?","two":"У меня две сестры.","three":"Мы ждали три часа.","many":"Сколько человек пришло?","much":"Сколько это стоит?","some":"Хочешь воды?","all":"Все билеты проданы.","more":"Можно мне ещё немного?","most":"Большинство людей согласны.","less":"Старайся тратить меньше денег.","half":"Мне половину чашки.","both":"Оба ответа верны.","each":"Каждый ребёнок получил подарок.","every":"Я бегаю каждое утро.","several":"Я звонил ему несколько раз.","okay":"Хорошо, пойдём.","resume":"Пожалуйста, пришли мне резюме.","metro":"Давай поедем на метро.","store":"Магазин закрыт по воскресеньям.","card":"Можно оплатить картой?","supermarket":"Я иду в супермаркет.","receipt":"Сохрани чек, пожалуйста.","mouth":"Открой рот, пожалуйста.","nose":"У меня заложен нос.","ear":"У меня болит ухо.","stomach":"У меня болит живот.","talk":"Можем поговорить минутку?","repeat":"Можешь повторить?","spell":"Как это пишется по буквам?","sentence":"Составь предложение с этим словом.","translate":"Можешь это перевести?","pronounce":"Как произносится это слово?","conversation":"У нас был приятный разговор.","meaning":"Какое значение у этого слова?","information":"Мне нужно больше информации.","organize":"Давай организуем вечеринку.","lend":"Можешь одолжить мне десять долларов?","join":"Хочешь присоединиться к нам?","remind":"Напомни мне ей позвонить.","mention":"Он не упомянул цену.","compare":"Давай сравним два варианта.","solve":"Нам нужно решить эту проблему.","afford":"Я не могу позволить себе новую машину.","available":"Этот столик свободен?","polite":"Он всегда вежлив.","quick":"Давай быстро пообедаем.","similar":"Наши идеи похожи.","boring":"Фильм был скучный.","proud":"Я тобой горжусь.","honest":"Пожалуйста, будь со мной честен.","brave":"Он храбрый солдат.","solution":"Есть простое решение.","journey":"Это было долгое путешествие.","service":"Обслуживание здесь отличное.","quality":"Качество очень хорошее.","furniture":"Мы купили новую мебель.","calendar":"Отметь дату в календаре.","moment":"Подожди момент, пожалуйста.","grey":"Он был в сером костюме.","four":"У меня четыре билета.","five":"Магазин открывается в пять.","six":"Я проснулся в шесть.","seven":"В неделе семь дней.","eight":"Ей восемь лет.","nine":"Фильм начинается в девять.","ten":"Я буду там через десять минут.","hundred":"Это стоит сто долларов.","thousand":"Там была тысяча человек.","but":"Я бы с радостью, но я занят.","or":"Чай или кофе?","if":"Позвони, если нужна помощь.","so":"Я устал, поэтому пошёл спать."};
+const FORMS=[{"en": "be", "ru": "быть", "type": "verb", "forms": ["be", "was / were", "been"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "go", "ru": "идти, ехать", "type": "verb", "forms": ["go", "went", "gone"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "do", "ru": "делать", "type": "verb", "forms": ["do", "did", "done"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "see", "ru": "видеть", "type": "verb", "forms": ["see", "saw", "seen"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "take", "ru": "брать", "type": "verb", "forms": ["take", "took", "taken"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "give", "ru": "давать", "type": "verb", "forms": ["give", "gave", "given"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "eat", "ru": "есть", "type": "verb", "forms": ["eat", "ate", "eaten"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "write", "ru": "писать", "type": "verb", "forms": ["write", "wrote", "written"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "drive", "ru": "водить", "type": "verb", "forms": ["drive", "drove", "driven"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "speak", "ru": "говорить", "type": "verb", "forms": ["speak", "spoke", "spoken"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "break", "ru": "ломать", "type": "verb", "forms": ["break", "broke", "broken"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "choose", "ru": "выбирать", "type": "verb", "forms": ["choose", "chose", "chosen"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "fall", "ru": "падать", "type": "verb", "forms": ["fall", "fell", "fallen"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "draw", "ru": "рисовать", "type": "verb", "forms": ["draw", "drew", "drawn"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "know", "ru": "знать", "type": "verb", "forms": ["know", "knew", "known"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "grow", "ru": "расти", "type": "verb", "forms": ["grow", "grew", "grown"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "throw", "ru": "бросать", "type": "verb", "forms": ["throw", "threw", "thrown"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "fly", "ru": "летать", "type": "verb", "forms": ["fly", "flew", "flown"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "show", "ru": "показывать", "type": "verb", "forms": ["show", "showed", "shown"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "wear", "ru": "носить (одежду)", "type": "verb", "forms": ["wear", "wore", "worn"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "tear", "ru": "рвать", "type": "verb", "forms": ["tear", "tore", "torn"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "forget", "ru": "забывать", "type": "verb", "forms": ["forget", "forgot", "forgotten"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "hide", "ru": "прятать", "type": "verb", "forms": ["hide", "hid", "hidden"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "bite", "ru": "кусать", "type": "verb", "forms": ["bite", "bit", "bitten"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "ride", "ru": "ездить верхом", "type": "verb", "forms": ["ride", "rode", "ridden"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "rise", "ru": "подниматься", "type": "verb", "forms": ["rise", "rose", "risen"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "freeze", "ru": "замерзать", "type": "verb", "forms": ["freeze", "froze", "frozen"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "steal", "ru": "красть", "type": "verb", "forms": ["steal", "stole", "stolen"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "wake", "ru": "просыпаться", "type": "verb", "forms": ["wake", "woke", "woken"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "shake", "ru": "трясти", "type": "verb", "forms": ["shake", "shook", "shaken"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-C"}, {"en": "begin", "ru": "начинать", "type": "verb", "forms": ["begin", "began", "begun"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "i-a-u"}, {"en": "drink", "ru": "пить", "type": "verb", "forms": ["drink", "drank", "drunk"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "i-a-u"}, {"en": "swim", "ru": "плавать", "type": "verb", "forms": ["swim", "swam", "swum"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "i-a-u"}, {"en": "sing", "ru": "петь", "type": "verb", "forms": ["sing", "sang", "sung"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "i-a-u"}, {"en": "ring", "ru": "звонить", "type": "verb", "forms": ["ring", "rang", "rung"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "i-a-u"}, {"en": "sink", "ru": "тонуть", "type": "verb", "forms": ["sink", "sank", "sunk"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "i-a-u"}, {"en": "come", "ru": "приходить", "type": "verb", "forms": ["come", "came", "come"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-A"}, {"en": "become", "ru": "становиться", "type": "verb", "forms": ["become", "became", "become"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-A"}, {"en": "run", "ru": "бежать", "type": "verb", "forms": ["run", "ran", "run"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-A"}, {"en": "buy", "ru": "покупать", "type": "verb", "forms": ["buy", "bought", "bought"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "bring", "ru": "приносить", "type": "verb", "forms": ["bring", "brought", "brought"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "think", "ru": "думать", "type": "verb", "forms": ["think", "thought", "thought"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "teach", "ru": "учить (кого-то)", "type": "verb", "forms": ["teach", "taught", "taught"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "catch", "ru": "ловить", "type": "verb", "forms": ["catch", "caught", "caught"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "make", "ru": "делать, создавать", "type": "verb", "forms": ["make", "made", "made"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "have", "ru": "иметь", "type": "verb", "forms": ["have", "had", "had"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "say", "ru": "говорить", "type": "verb", "forms": ["say", "said", "said"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "pay", "ru": "платить", "type": "verb", "forms": ["pay", "paid", "paid"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "find", "ru": "находить", "type": "verb", "forms": ["find", "found", "found"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "get", "ru": "получать", "type": "verb", "forms": ["get", "got", "got"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "sit", "ru": "сидеть", "type": "verb", "forms": ["sit", "sat", "sat"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "win", "ru": "побеждать", "type": "verb", "forms": ["win", "won", "won"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "hold", "ru": "держать", "type": "verb", "forms": ["hold", "held", "held"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "sell", "ru": "продавать", "type": "verb", "forms": ["sell", "sold", "sold"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "tell", "ru": "рассказывать", "type": "verb", "forms": ["tell", "told", "told"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "feel", "ru": "чувствовать", "type": "verb", "forms": ["feel", "felt", "felt"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "keep", "ru": "держать, продолжать", "type": "verb", "forms": ["keep", "kept", "kept"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "sleep", "ru": "спать", "type": "verb", "forms": ["sleep", "slept", "slept"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "leave", "ru": "уходить, оставлять", "type": "verb", "forms": ["leave", "left", "left"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "lose", "ru": "терять", "type": "verb", "forms": ["lose", "lost", "lost"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "build", "ru": "строить", "type": "verb", "forms": ["build", "built", "built"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "send", "ru": "отправлять", "type": "verb", "forms": ["send", "sent", "sent"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "spend", "ru": "тратить", "type": "verb", "forms": ["spend", "spent", "spent"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "stand", "ru": "стоять", "type": "verb", "forms": ["stand", "stood", "stood"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "understand", "ru": "понимать", "type": "verb", "forms": ["understand", "understood", "understood"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "meet", "ru": "встречать", "type": "verb", "forms": ["meet", "met", "met"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "lead", "ru": "вести", "type": "verb", "forms": ["lead", "led", "led"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "hear", "ru": "слышать", "type": "verb", "forms": ["hear", "heard", "heard"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "mean", "ru": "значить", "type": "verb", "forms": ["mean", "meant", "meant"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "hang", "ru": "вешать", "type": "verb", "forms": ["hang", "hung", "hung"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-B-B"}, {"en": "cut", "ru": "резать", "type": "verb", "forms": ["cut", "cut", "cut"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-A-A"}, {"en": "put", "ru": "класть", "type": "verb", "forms": ["put", "put", "put"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-A-A"}, {"en": "hit", "ru": "ударять", "type": "verb", "forms": ["hit", "hit", "hit"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-A-A"}, {"en": "let", "ru": "позволять", "type": "verb", "forms": ["let", "let", "let"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-A-A"}, {"en": "set", "ru": "ставить", "type": "verb", "forms": ["set", "set", "set"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-A-A"}, {"en": "cost", "ru": "стоить", "type": "verb", "forms": ["cost", "cost", "cost"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-A-A"}, {"en": "hurt", "ru": "причинять боль", "type": "verb", "forms": ["hurt", "hurt", "hurt"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-A-A"}, {"en": "shut", "ru": "закрывать", "type": "verb", "forms": ["shut", "shut", "shut"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-A-A"}, {"en": "read", "ru": "читать (V2/V3 читаются [red])", "type": "verb", "forms": ["read", "read", "read"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-A-A"}, {"en": "quit", "ru": "бросать, прекращать", "type": "verb", "forms": ["quit", "quit", "quit"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-A-A"}, {"en": "spread", "ru": "распространять", "type": "verb", "forms": ["spread", "spread", "spread"], "flabels": ["инфинитив", "прош. вр.", "причастие"], "family": "A-A-A"}, {"en": "man", "ru": "мужчина", "type": "exception", "forms": ["man", "men"], "flabels": ["ед. число", "мн. число"], "family": "мн. число"}, {"en": "woman", "ru": "женщина", "type": "exception", "forms": ["woman", "women"], "flabels": ["ед. число", "мн. число"], "family": "мн. число"}, {"en": "child", "ru": "ребёнок", "type": "exception", "forms": ["child", "children"], "flabels": ["ед. число", "мн. число"], "family": "мн. число"}, {"en": "person", "ru": "человек", "type": "exception", "forms": ["person", "people"], "flabels": ["ед. число", "мн. число"], "family": "мн. число"}, {"en": "foot", "ru": "ступня, нога", "type": "exception", "forms": ["foot", "feet"], "flabels": ["ед. число", "мн. число"], "family": "мн. число"}, {"en": "tooth", "ru": "зуб", "type": "exception", "forms": ["tooth", "teeth"], "flabels": ["ед. число", "мн. число"], "family": "мн. число"}, {"en": "mouse", "ru": "мышь", "type": "exception", "forms": ["mouse", "mice"], "flabels": ["ед. число", "мн. число"], "family": "мн. число"}, {"en": "goose", "ru": "гусь", "type": "exception", "forms": ["goose", "geese"], "flabels": ["ед. число", "мн. число"], "family": "мн. число"}, {"en": "fish", "ru": "рыба", "type": "exception", "forms": ["fish", "fish"], "flabels": ["ед. число", "мн. число"], "family": "мн. число"}, {"en": "sheep", "ru": "овца", "type": "exception", "forms": ["sheep", "sheep"], "flabels": ["ед. число", "мн. число"], "family": "мн. число"}, {"en": "leaf", "ru": "лист", "type": "exception", "forms": ["leaf", "leaves"], "flabels": ["ед. число", "мн. число"], "family": "мн. число"}, {"en": "wife", "ru": "жена", "type": "exception", "forms": ["wife", "wives"], "flabels": ["ед. число", "мн. число"], "family": "мн. число"}, {"en": "knife", "ru": "нож", "type": "exception", "forms": ["knife", "knives"], "flabels": ["ед. число", "мн. число"], "family": "мн. число"}, {"en": "life", "ru": "жизнь", "type": "exception", "forms": ["life", "lives"], "flabels": ["ед. число", "мн. число"], "family": "мн. число"}, {"en": "good", "ru": "хороший", "type": "exception", "forms": ["good", "better", "best"], "flabels": ["база", "сравнит.", "превосх."], "family": "степени сравнения"}, {"en": "bad", "ru": "плохой", "type": "exception", "forms": ["bad", "worse", "worst"], "flabels": ["база", "сравнит.", "превосх."], "family": "степени сравнения"}, {"en": "far", "ru": "далёкий", "type": "exception", "forms": ["far", "further", "furthest"], "flabels": ["база", "сравнит.", "превосх."], "family": "степени сравнения"}, {"en": "little", "ru": "маленький, мало", "type": "exception", "forms": ["little", "less", "least"], "flabels": ["база", "сравнит.", "превосх."], "family": "степени сравнения"}, {"en": "much", "ru": "много", "type": "exception", "forms": ["much", "more", "most"], "flabels": ["база", "сравнит.", "превосх."], "family": "степени сравнения"}];
+const PHRASES=[{"en": "in my opinion", "ru": "по-моему", "type": "phrase", "tag": "связка · мнение", "lit": "", "ex": "", "exru": ""}, {"en": "as far as I know", "ru": "насколько я знаю", "type": "phrase", "tag": "связка · мнение", "lit": "", "ex": "", "exru": ""}, {"en": "to be honest", "ru": "честно говоря", "type": "phrase", "tag": "связка · мнение", "lit": "", "ex": "", "exru": ""}, {"en": "if you ask me", "ru": "если хочешь моё мнение", "type": "phrase", "tag": "связка · мнение", "lit": "", "ex": "", "exru": ""}, {"en": "from my point of view", "ru": "с моей точки зрения", "type": "phrase", "tag": "связка · мнение", "lit": "", "ex": "", "exru": ""}, {"en": "well", "ru": "ну…", "type": "phrase", "tag": "связка · начать мысль", "lit": "", "ex": "", "exru": ""}, {"en": "so", "ru": "значит, итак", "type": "phrase", "tag": "связка · начать мысль", "lit": "", "ex": "", "exru": ""}, {"en": "you know", "ru": "знаешь", "type": "phrase", "tag": "связка · начать мысль", "lit": "", "ex": "", "exru": ""}, {"en": "actually", "ru": "вообще-то", "type": "phrase", "tag": "связка · начать мысль", "lit": "", "ex": "", "exru": ""}, {"en": "basically", "ru": "по сути", "type": "phrase", "tag": "связка · начать мысль", "lit": "", "ex": "", "exru": ""}, {"en": "I mean", "ru": "то есть", "type": "phrase", "tag": "связка · начать мысль", "lit": "", "ex": "", "exru": ""}, {"en": "in fact", "ru": "на самом деле", "type": "phrase", "tag": "связка · начать мысль", "lit": "", "ex": "", "exru": ""}, {"en": "and then", "ru": "и потом", "type": "phrase", "tag": "связка · продолжить", "lit": "", "ex": "", "exru": ""}, {"en": "also", "ru": "также", "type": "phrase", "tag": "связка · продолжить", "lit": "", "ex": "", "exru": ""}, {"en": "besides", "ru": "кроме того", "type": "phrase", "tag": "связка · продолжить", "lit": "", "ex": "", "exru": ""}, {"en": "what's more", "ru": "более того", "type": "phrase", "tag": "связка · продолжить", "lit": "", "ex": "", "exru": ""}, {"en": "not only that", "ru": "и это ещё не всё", "type": "phrase", "tag": "связка · продолжить", "lit": "", "ex": "", "exru": ""}, {"en": "on top of that", "ru": "вдобавок", "type": "phrase", "tag": "связка · продолжить", "lit": "", "ex": "", "exru": ""}, {"en": "plus", "ru": "плюс, к тому же", "type": "phrase", "tag": "связка · продолжить", "lit": "", "ex": "", "exru": ""}, {"en": "in other words", "ru": "другими словами", "type": "phrase", "tag": "связка · уточнить", "lit": "", "ex": "", "exru": ""}, {"en": "that is to say", "ru": "иначе говоря", "type": "phrase", "tag": "связка · уточнить", "lit": "", "ex": "", "exru": ""}, {"en": "or rather", "ru": "точнее", "type": "phrase", "tag": "связка · уточнить", "lit": "", "ex": "", "exru": ""}, {"en": "what I mean is", "ru": "я имею в виду, что", "type": "phrase", "tag": "связка · уточнить", "lit": "", "ex": "", "exru": ""}, {"en": "first of all", "ru": "прежде всего", "type": "phrase", "tag": "связка · структурировать", "lit": "", "ex": "", "exru": ""}, {"en": "secondly", "ru": "во-вторых", "type": "phrase", "tag": "связка · структурировать", "lit": "", "ex": "", "exru": ""}, {"en": "next", "ru": "далее", "type": "phrase", "tag": "связка · структурировать", "lit": "", "ex": "", "exru": ""}, {"en": "finally", "ru": "наконец", "type": "phrase", "tag": "связка · структурировать", "lit": "", "ex": "", "exru": ""}, {"en": "in conclusion", "ru": "в заключение", "type": "phrase", "tag": "связка · структурировать", "lit": "", "ex": "", "exru": ""}, {"en": "to sum up", "ru": "подытоживая", "type": "phrase", "tag": "связка · структурировать", "lit": "", "ex": "", "exru": ""}, {"en": "all in all", "ru": "в целом", "type": "phrase", "tag": "связка · структурировать", "lit": "", "ex": "", "exru": ""}, {"en": "however", "ru": "однако", "type": "phrase", "tag": "связка · сравнить/противопоставить", "lit": "", "ex": "", "exru": ""}, {"en": "on the other hand", "ru": "с другой стороны", "type": "phrase", "tag": "связка · сравнить/противопоставить", "lit": "", "ex": "", "exru": ""}, {"en": "at the same time", "ru": "в то же время", "type": "phrase", "tag": "связка · сравнить/противопоставить", "lit": "", "ex": "", "exru": ""}, {"en": "whereas", "ru": "тогда как", "type": "phrase", "tag": "связка · сравнить/противопоставить", "lit": "", "ex": "", "exru": ""}, {"en": "even though", "ru": "хотя", "type": "phrase", "tag": "связка · сравнить/противопоставить", "lit": "", "ex": "", "exru": ""}, {"en": "while", "ru": "в то время как", "type": "phrase", "tag": "связка · сравнить/противопоставить", "lit": "", "ex": "", "exru": ""}, {"en": "since", "ru": "так как", "type": "phrase", "tag": "связка · причина/следствие", "lit": "", "ex": "", "exru": ""}, {"en": "as a result", "ru": "в результате", "type": "phrase", "tag": "связка · причина/следствие", "lit": "", "ex": "", "exru": ""}, {"en": "that's why", "ru": "поэтому", "type": "phrase", "tag": "связка · причина/следствие", "lit": "", "ex": "", "exru": ""}, {"en": "therefore", "ru": "следовательно", "type": "phrase", "tag": "связка · причина/следствие", "lit": "", "ex": "", "exru": ""}, {"en": "due to", "ru": "из-за", "type": "phrase", "tag": "связка · причина/следствие", "lit": "", "ex": "", "exru": ""}, {"en": "thanks to", "ru": "благодаря", "type": "phrase", "tag": "связка · причина/следствие", "lit": "", "ex": "", "exru": ""}, {"en": "give up", "ru": "сдаваться, бросать", "type": "phrase", "tag": "фразовый глагол", "lit": "«дать вверх»", "ex": "Don't give up!", "exru": "Не сдавайся!"}, {"en": "look for", "ru": "искать", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "I'm looking for my keys.", "exru": "Я ищу ключи."}, {"en": "look after", "ru": "заботиться о, присматривать", "type": "phrase", "tag": "фразовый глагол", "lit": "«смотреть после»", "ex": "She looks after her little brother.", "exru": "Она присматривает за младшим братом."}, {"en": "find out", "ru": "выяснить, узнать", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "I'll find out the time.", "exru": "Я выясню время."}, {"en": "get up", "ru": "вставать (с постели)", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "I get up at seven.", "exru": "Я встаю в семь."}, {"en": "turn on", "ru": "включать", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "Turn on the light.", "exru": "Включи свет."}, {"en": "turn off", "ru": "выключать", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "Turn off the TV.", "exru": "Выключи телевизор."}, {"en": "put on", "ru": "надевать", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "Put on your coat.", "exru": "Надень пальто."}, {"en": "take off", "ru": "снимать (одежду); взлетать", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "Take off your shoes.", "exru": "Сними обувь."}, {"en": "wake up", "ru": "просыпаться", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "I woke up early.", "exru": "Я проснулся рано."}, {"en": "come back", "ru": "возвращаться", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "Come back soon.", "exru": "Возвращайся скорее."}, {"en": "go on", "ru": "продолжать(ся)", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "Please go on.", "exru": "Пожалуйста, продолжай."}, {"en": "pick up", "ru": "забирать; подбирать", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "I'll pick you up at six.", "exru": "Я заберу тебя в шесть."}, {"en": "set up", "ru": "настраивать; организовывать", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "Let's set up a meeting.", "exru": "Давай назначим встречу."}, {"en": "break down", "ru": "ломаться (о технике)", "type": "phrase", "tag": "фразовый глагол", "lit": "«сломать вниз»", "ex": "My car broke down.", "exru": "Моя машина сломалась."}, {"en": "deal with", "ru": "иметь дело с, разбираться", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "I'll deal with it.", "exru": "Я разберусь с этим."}, {"en": "figure out", "ru": "понять, разобраться", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "I can't figure out this problem.", "exru": "Я не могу разобраться с этой задачей."}, {"en": "run out of", "ru": "заканчиваться (о запасе)", "type": "phrase", "tag": "фразовый глагол", "lit": "«выбежать из»", "ex": "We ran out of milk.", "exru": "У нас закончилось молоко."}, {"en": "look forward to", "ru": "с нетерпением ждать", "type": "phrase", "tag": "фразовый глагол", "lit": "«смотреть вперёд к»", "ex": "I look forward to your reply.", "exru": "С нетерпением жду твоего ответа."}, {"en": "grow up", "ru": "взрослеть", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "She grew up in Italy.", "exru": "Она выросла в Италии."}, {"en": "throw away", "ru": "выбрасывать", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "Don't throw it away.", "exru": "Не выбрасывай это."}, {"en": "work out", "ru": "тренироваться; находить решение", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "I work out every morning.", "exru": "Я тренируюсь каждое утро."}, {"en": "check in", "ru": "регистрироваться, заселяться", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "We checked in at the hotel.", "exru": "Мы заселились в отель."}, {"en": "get along", "ru": "ладить", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "They get along well.", "exru": "Они хорошо ладят."}, {"en": "hang out", "ru": "тусоваться (разг.)", "type": "phrase", "tag": "фразовый глагол", "lit": "«висеть снаружи»", "ex": "Let's hang out tonight.", "exru": "Давай потусим вечером."}, {"en": "calm down", "ru": "успокаиваться", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "Calm down, please.", "exru": "Успокойся, пожалуйста."}, {"en": "give back", "ru": "возвращать (отдавать)", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "Give me back my pen.", "exru": "Верни мне ручку."}, {"en": "turn up", "ru": "появляться, объявляться", "type": "phrase", "tag": "фразовый глагол", "lit": "", "ex": "He turned up late.", "exru": "Он появился поздно."}, {"en": "piece of cake", "ru": "проще простого", "type": "phrase", "tag": "идиома", "lit": "«кусок торта»", "ex": "The test was a piece of cake.", "exru": "Тест был проще простого."}, {"en": "break a leg", "ru": "ни пуха ни пера (удачи)", "type": "phrase", "tag": "идиома", "lit": "«сломай ногу»", "ex": "Break a leg at your concert!", "exru": "Ни пуха ни пера на концерте!"}, {"en": "under the weather", "ru": "приболеть, неважно себя чувствовать", "type": "phrase", "tag": "идиома", "lit": "«под погодой»", "ex": "I'm feeling under the weather.", "exru": "Я слегка приболел."}, {"en": "once in a blue moon", "ru": "очень редко", "type": "phrase", "tag": "идиома", "lit": "«раз в голубую луну»", "ex": "We meet once in a blue moon.", "exru": "Мы видимся очень редко."}, {"en": "cost an arm and a leg", "ru": "стоить целое состояние", "type": "phrase", "tag": "идиома", "lit": "«стоить руку и ногу»", "ex": "That bag cost an arm and a leg.", "exru": "Та сумка стоила целое состояние."}, {"en": "hit the books", "ru": "засесть за учёбу", "type": "phrase", "tag": "идиома", "lit": "«бить книги»", "ex": "I need to hit the books tonight.", "exru": "Сегодня мне надо засесть за учёбу."}, {"en": "call it a day", "ru": "закончить на сегодня", "type": "phrase", "tag": "идиома", "lit": "«назвать это днём»", "ex": "Let's call it a day.", "exru": "Давай на сегодня закончим."}, {"en": "on the same page", "ru": "понимать друг друга, быть заодно", "type": "phrase", "tag": "идиома", "lit": "«на одной странице»", "ex": "We're on the same page.", "exru": "Мы понимаем друг друга."}, {"en": "out of the blue", "ru": "внезапно, как снег на голову", "type": "phrase", "tag": "идиома", "lit": "«из синевы»", "ex": "She called out of the blue.", "exru": "Она позвонила внезапно."}, {"en": "bite the bullet", "ru": "стиснуть зубы, решиться", "type": "phrase", "tag": "идиома", "lit": "«укусить пулю»", "ex": "I bit the bullet and asked her.", "exru": "Я собрался с духом и спросил её."}, {"en": "pull someone's leg", "ru": "подшучивать, разыгрывать", "type": "phrase", "tag": "идиома", "lit": "«тянуть за ногу»", "ex": "Are you pulling my leg?", "exru": "Ты меня разыгрываешь?"}, {"en": "make up your mind", "ru": "определиться, решиться", "type": "phrase", "tag": "идиома", "lit": "«сложить свой ум»", "ex": "Make up your mind!", "exru": "Определись уже!"}, {"en": "better late than never", "ru": "лучше поздно, чем никогда", "type": "phrase", "tag": "идиома", "lit": "", "ex": "He came late, but better late than never.", "exru": "Он пришёл поздно, но лучше поздно, чем никогда."}, {"en": "kill two birds with one stone", "ru": "убить двух зайцев", "type": "phrase", "tag": "идиома", "lit": "«убить двух птиц одним камнем»", "ex": "This way I kill two birds with one stone.", "exru": "Так я убиваю двух зайцев."}, {"en": "get the hang of it", "ru": "приноровиться, освоиться", "type": "phrase", "tag": "идиома", "lit": "", "ex": "You'll get the hang of it.", "exru": "Ты приноровишься."}, {"en": "the ball is in your court", "ru": "твой ход, решение за тобой", "type": "phrase", "tag": "идиома", "lit": "«мяч на твоей половине»", "ex": "Now the ball is in your court.", "exru": "Теперь решение за тобой."}, {"en": "no big deal", "ru": "ничего страшного, пустяк", "type": "phrase", "tag": "идиома", "lit": "«не большая сделка»", "ex": "It's no big deal.", "exru": "Ничего страшного."}, {"en": "a rip-off", "ru": "грабёж, обдираловка (разг.)", "type": "phrase", "tag": "идиома", "lit": "", "ex": "Ten dollars for a coffee? What a rip-off!", "exru": "Десять долларов за кофе? Грабёж!"}];
+
+/* ---------- хранилище ----------
+   Приоритет: сервер (data/state.json) → запасной localStorage (если открыт как файл). */
+let useServer=true;       // удалось ли достучаться до backend
+let saveTimer=null;       // дебаунс сохранения
+
+// На мобиле (Capacitor) сервера нет, а localStorage в WKWebView ОС может вычистить
+// под нехватку памяти. Поэтому в нативной сборке прогресс храним в Capacitor
+// Preferences (контейнер приложения, переживает чистку и бэкапится с приложением).
+// В вебе/десктопе window.Capacitor нет → всё работает как раньше.
+const isNative = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+const Prefs = (isNative && window.Capacitor.Plugins) ? window.Capacitor.Plugins.Preferences : null;
+
+async function load(){
+  if(isNative){
+    useServer=false;                       // нет бэкенда — только локальное хранилище
+    if(Prefs){
+      try{ const {value}=await Prefs.get({key:STORE_KEY}); if(value!=null) return JSON.parse(value); }
+      catch(e){ /* упадём в localStorage-зеркало ниже */ }
+    }
+    try{ const s=localStorage.getItem(STORE_KEY); return s?JSON.parse(s):null; }
+    catch(e){ canPersist=false; }
+    return null;
+  }
+  try{
+    const r=await fetch('/api/state',{cache:'no-store'});
+    if(r.ok){ useServer=true; const j=await r.json(); return j; }
+  }catch(e){ /* сервера нет — открыли файл напрямую */ }
+  useServer=false;
+  try{ const s=localStorage.getItem(STORE_KEY); return s?JSON.parse(s):null; }
+  catch(e){ canPersist=false; }
+  return null;
+}
+
+async function save(){
+  if(!canPersist) return;
+  clearTimeout(saveTimer);
+  saveTimer=setTimeout(()=>flush(false), 350);
+}
+
+async function flush(sync){
+  const payload=JSON.stringify(state);
+  if(useServer){
+    if(sync && navigator.sendBeacon){
+      navigator.sendBeacon('/api/state', new Blob([payload],{type:'application/json'}));
+      return;
+    }
+    try{
+      await fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:payload});
+      return;
+    }catch(e){ useServer=false; }
+  }
+  // нативно — пишем в Preferences (надёжно); localStorage держим зеркалом
+  if(Prefs){ try{ await Prefs.set({key:STORE_KEY, value:payload}); }catch(e){} }
+  try{ localStorage.setItem(STORE_KEY,payload); }
+  catch(e){ if(!Prefs){ canPersist=false; showBanner('Не удаётся сохранить прогресс. Делай резервную копию во вкладке «Ещё».'); } }
+}
+
+window.addEventListener('beforeunload',()=>{ if(canPersist) flush(true); });
+
+/* ---------- лог ответов для ML (append-only data/events.jsonl) ---------- */
+const sessionId='s'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString(36);
+
+function logEvent(ev){
+  ev.ts=new Date().toISOString();
+  ev.session_id=sessionId;
+  if(useServer){
+    fetch('/api/event',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(ev)})
+      .catch(()=>bufferEvent(ev));
+  }else{
+    bufferEvent(ev);
+  }
+}
+function bufferEvent(ev){
+  try{ const b=JSON.parse(localStorage.getItem(EVENTS_KEY)||'[]'); b.push(ev);
+       localStorage.setItem(EVENTS_KEY,JSON.stringify(b)); }catch(e){}
+}
+async function flushEventBuffer(){
+  if(!useServer) return;
+  let b; try{ b=JSON.parse(localStorage.getItem(EVENTS_KEY)||'[]'); }catch(e){ return; }
+  if(!b.length) return;
+  try{ await fetch('/api/events',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});
+       localStorage.removeItem(EVENTS_KEY); }catch(e){}
+}
+
+/* ---------- дни (а не таймстампы) ---------- */
+function dayFromMs(ms){ const d=new Date(ms); return Math.floor((ms - d.getTimezoneOffset()*60000)/DAY); }
+function todayDay(){ return dayFromMs(Date.now()); }
+function todayStr(){const d=new Date();return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate();}
+
+function freshState(){
+  const cards={};
+  let n=0;
+  SEED.replace(/\n/g,'').split('|').forEach(pair=>{
+    const i=pair.indexOf(':'); if(i<0) return;
+    const en=pair.slice(0,i).trim(); const ru=pair.slice(i+1).trim();
+    if(!en||!ru) return;
+    const id='s'+(n++);
+    cards[id]={en,ru,tr:TR[en.toLowerCase()]||'',ex:EX[en.toLowerCase()]||'',exru:EXRU[en.toLowerCase()]||'',type:'word',box:0,wrong:0,correct:0,seen:0,due:0,added:Date.now()};
+  });
+  FORMS.forEach(f=>{ cards['f'+f.en]=formCard(f); });
+  PHRASES.forEach((p,i)=>{ cards['p'+i]=phraseCard(p); });
+  return {cards, settings:defaultSettings(), daily:{date:todayStr(), done:0, ids:[]}};
+}
+// карточка модуля «Выражения» (связка / фразовый глагол / идиома)
+function phraseCard(p){
+  return {en:p.en, ru:p.ru, type:'phrase', tag:p.tag||'', lit:p.lit||'', ex:p.ex||'', exru:p.exru||'',
+    tr:'', box:0,wrong:0,correct:0,seen:0,due:0,added:Date.now()};
+}
+// карточка модуля «Формы» (глагол / исключение) — пример берём из таблиц по базе
+function formCard(f){
+  const k=(f.en||'').toLowerCase();
+  return {en:f.en, ru:f.ru, type:f.type, forms:f.forms.slice(), flabels:f.flabels.slice(), family:f.family,
+    tr:TR[k]||'', ex:EX[k]||'', exru:EXRU[k]||'',
+    box:0,wrong:0,correct:0,seen:0,due:0,added:Date.now()};
+}
+function defaultSettings(){ return {dir:'en-ru', target:400, toggles:{review:true, fresh:true, mistakes:false}}; }
+
+/* ---------- сессия ---------- */
+let queue=[];          // массив id на сегодня
+let current=null;      // текущий id
+let revealed=false;
+let cardShownAt=0;     // performance.now() показа карточки — для latency
+/* режим теста */
+let testActive=false, testQueue=[], testTotal=0, testStats={correct:0,wrong:0,missed:[]};
+/* активный модуль: 'words' (Учить) | 'forms' (Формы) | 'phrases' (Выражения) */
+let studyScope='words';
+function isForm(c){ return !!c && (c.type==='verb'||c.type==='exception'); }
+function isPhrase(c){ return !!c && c.type==='phrase'; }
+function categoryOf(c){ return isForm(c)?'forms':(isPhrase(c)?'phrases':'words'); }
+function inScope(c){ return categoryOf(c)===studyScope; }
+
+function rollDaily(){
+  if(state.daily.date!==todayStr()){
+    state.daily={date:todayStr(), done:0, ids:[]};
+  }
+}
+
+function mistakeCards(){
+  return Object.entries(state.cards).filter(([id,c])=>c.wrong>0 && inScope(c))
+    .sort((a,b)=> b[1].wrong-a[1].wrong || a[1].box-b[1].box).map(x=>x[0]);
+}
+
+// Собрать список id для очереди.
+//   beyond=true  — снять дневной лимит («Продолжить сверх плана»).
+//   drill=true   — явный дрилл ошибок: показывать слова с ошибками даже если
+//                  они уже отвечены сегодня (для кнопки/тумблера «Ошибки»).
+//                  При пассивной сборке (загрузка, переключение) drill=false,
+//                  чтобы сегодняшние ошибки не повторялись бесконечно.
+function selectQueue(beyond, drill){
+  rollDaily();
+  const today=todayDay();
+  const t=state.settings.toggles||defaultSettings().toggles;
+  const all=Object.entries(state.cards).filter(([id,c])=>inScope(c));
+  const doneSet=new Set(state.daily.ids);
+  const target=state.settings.target||400;
+
+  const pick=[]; const inPick=new Set();
+  const add=id=>{ if(!inPick.has(id)){ inPick.add(id); pick.push(id); } };
+
+  let cap = beyond ? Infinity : Math.max(0, target - state.daily.done);
+
+  if(t.review){
+    const due=all.filter(([id,c])=>c.seen>0 && c.due<=today)
+      .sort((a,b)=> a[1].box-b[1].box || b[1].wrong-a[1].wrong || a[1].due-b[1].due)
+      .map(x=>x[0]);
+    for(const id of due){ if(cap<=0) break; if(!doneSet.has(id)){ add(id); cap--; } }
+  }
+  if(t.fresh){
+    const freshIds=all.filter(([id,c])=>c.seen===0).map(x=>x[0]);
+    for(const id of freshIds){ if(cap<=0) break; if(!doneSet.has(id)){ add(id); cap--; } }
+  }
+  if(t.mistakes){
+    for(const id of mistakeCards()){ if(drill || !doneSet.has(id)) add(id); }
+  }
+  return pick;
+}
+function buildQueue(beyond, drill){ queue = selectQueue(beyond, drill); }
+
+// Сколько новых/просроченных слов доступно сверх уже сделанного сегодня
+// (по текущим тумблерам) — для подписи кнопки «Продолжить».
+function countNewDue(){
+  const today=todayDay();
+  const t=state.settings.toggles||defaultSettings().toggles;
+  const doneSet=new Set(state.daily.ids);
+  let n=0;
+  for(const [id,c] of Object.entries(state.cards)){
+    if(!inScope(c) || doneSet.has(id)) continue;
+    if(t.review && c.seen>0 && c.due<=today){ n++; continue; }
+    if(t.fresh && c.seen===0){ n++; }
+  }
+  return n;
+}
+
+function nextCard(){
+  revealed=false;
+  if(queue.length===0){ current=null; renderStudy(); return; }
+  current=queue[0];
+  renderStudy();
+}
+
+function modeLabel(){
+  const t=state.settings.toggles||{};
+  return ['review','fresh','mistakes'].filter(k=>t[k]).join('+')||'none';
+}
+function latency(){ return cardShownAt? Math.round(performance.now()-cardShownAt):null; }
+
+function grade(known){
+  if(testActive) return gradeTest(known);
+  if(!current) return;
+  const c=state.cards[current];
+  const before={box:c.box,wrong:c.wrong,correct:c.correct,seen:c.seen,due:c.due};
+  c.seen++;
+  if(known){
+    c.correct++;
+    c.box=Math.min(c.box+1, INTERVAL.length-1);
+    c.due=todayDay()+INTERVAL[c.box];
+    queue.shift();
+  }else{
+    c.wrong++;
+    c.box=0;
+    c.due=todayDay();                       // вернётся уже сегодня по графику
+    queue.shift();
+    const pos=Math.min(REQUEUE_GAP, queue.length);
+    queue.splice(pos,0,current);            // повтор в этой же сессии
+  }
+  if(!state.daily.ids.includes(current)){
+    state.daily.ids.push(current);
+    state.daily.done++;
+  }
+  logEvent({card_id:current,en:c.en,ru:c.ru,tr:c.tr||'',dir:state.settings.dir,mode:modeLabel(),
+    known:known,box_before:before.box,box_after:c.box,wrong_before:before.wrong,correct_before:before.correct,
+    seen_before:before.seen,due_before_day:before.due,due_after_day:c.due,latency_ms:latency()});
+  save();
+  nextCard();
+}
+
+/* ---------- режим теста ---------- */
+function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+function startTest(){
+  const ids=Object.keys(state.cards).filter(id=>inScope(state.cards[id]));
+  if(!ids.length){ return; }
+  testQueue=shuffle(ids.slice());
+  testTotal=testQueue.length;
+  testStats={correct:0,wrong:0,missed:[]};
+  testActive=true; revealed=false; current=testQueue[0];
+  switchView('study');
+  renderStudy();
+}
+
+function gradeTest(known){
+  if(!current) return;
+  const c=state.cards[current];
+  const before={box:c.box,wrong:c.wrong,correct:c.correct,seen:c.seen,due:c.due};
+  if(known){ c.correct++; testStats.correct++; }
+  else{ c.wrong++; testStats.wrong++; testStats.missed.push(current); }
+  // график повторений тест НЕ трогает (это проверка себя), но промах идёт в статистику и пул ошибок
+  logEvent({card_id:current,en:c.en,ru:c.ru,tr:c.tr||'',dir:state.settings.dir,mode:'test',
+    known:known,box_before:before.box,box_after:c.box,wrong_before:before.wrong,correct_before:before.correct,
+    seen_before:before.seen,due_before_day:before.due,due_after_day:c.due,latency_ms:latency()});
+  testQueue.shift();
+  save();
+  revealed=false;
+  if(testQueue.length===0){ testActive=false; current=null; renderTestResults(); }
+  else{ current=testQueue[0]; renderStudy(); }
+}
+
+function drillMissed(){
+  const missed=testStats.missed.slice();
+  testActive=false;
+  if(!missed.length){ buildQueue(); nextCard(); return; }
+  queue=missed.slice(); current=queue[0]; revealed=false; renderStudy();
+}
+function endTest(){ testActive=false; current=null; buildQueue(); nextCard(); }
+
+/* ---------- рендер: учить ---------- */
+function renderStudy(){
+  const target=state.settings.target||400;
+  const done=state.daily.done;
+  document.getElementById('todayDone').textContent=done;
+  document.getElementById('todayTarget').textContent=target;
+  document.getElementById('queueLeft').textContent= testActive
+    ? ('тест: осталось '+testQueue.length)
+    : ('осталось в очереди: '+queue.length);
+  const frac=Math.min(1, done/target);
+  const C=2*Math.PI*22;
+  document.getElementById('ringFg').setAttribute('stroke-dashoffset', C*(1-frac));
+  document.getElementById('ringNum').textContent=Math.round(frac*100);
+
+  const body=document.getElementById('studyBody');
+
+  if(!current){
+    const mistakesN=Object.values(state.cards).filter(c=>c.wrong>0&&inScope(c)).length;
+    const moreN=countNewDue();                 // новые/просроченные сверх сделанного
+    if(moreN>0){
+      const reached=done>=target;
+      body.innerHTML=tplDone(
+        reached ? `Цель на сегодня — ${target} слов — выполнена 🎉` : 'Готов продолжать?',
+        reached ? 'Можно остановиться — или продолжить сверх плана.' : 'Собери новую партию.',
+        reached ? `Продолжить сверх плана (ещё ${moreN})` : `Поехали (ещё ${moreN})`,
+        'more', mistakesN,
+        reached ? {emoji:'🎉',c1:'#e0a458',c2:'#5ec8b0'} : {emoji:'🌱',c1:'#5ec8b0',c2:'#2f7d6c'});
+    }else if(mistakesN>0){
+      // новых/просроченных нет, но есть над чем поработать — ошибки
+      body.innerHTML=tplDone('На сейчас всё повторено.',
+        'Слова по графику закончились. Можно закрепить те, где ошибался.',
+        `Повторить ошибки (${mistakesN})`,'mistakes',0,
+        {emoji:'🔁',c1:'#e0a458',c2:'#e85c8a'});
+    }else{
+      body.innerHTML=tplDone('На сейчас всё повторено.',
+        'Возвращайся позже — слова всплывут по графику. Или добавь новые во вкладке «Добавить».',
+        'Обновить','refresh',0,
+        {emoji:'🌙',c1:'#5ec8b0',c2:'#7b6cff'});
+    }
+    updateChipHints(true);
+    return;
+  }
+  updateChipHints(false);
+
+  if(isForm(state.cards[current])){ renderFormsCard(state.cards[current]); return; }
+  if(isPhrase(state.cards[current])){ renderPhraseCard(state.cards[current]); return; }
+
+  const c=state.cards[current];
+  const dir=state.settings.dir;
+  const front = dir==='en-ru' ? c.en : c.ru;
+  const back  = dir==='en-ru' ? c.ru : c.en;
+  const frontTr = (dir==='en-ru' && c.tr) ? `<div class="tr">[${esc(c.tr)}]</div>` : '';
+  const backTr  = (dir==='ru-en' && c.tr) ? `<div class="tr ans">[${esc(c.tr)}]</div>` : '';
+  const pips=Array.from({length:INTERVAL.length-1},(_,i)=>
+     `<i class="${i<c.box?'on':''}"></i>`).join('');
+  const badge = testActive ? `<div class="testbadge">Тест · ${testTotal-testQueue.length+1} / ${testTotal}</div>` : '';
+  const hint = dir==='en-ru'?'вспомни перевод':'скажи по-английски';
+
+  body.innerHTML=`
+    <div class="card">
+      ${badge}
+      <div class="pips" title="уровень памяти">${pips}</div>
+      <div class="word">${esc(front)}</div>
+      ${frontTr}
+      <div class="hintword">${hint}</div>
+      <div class="answer" id="answer"><div class="ru">${esc(back)}</div>
+        ${backTr}
+        <div class="meta">${testActive?'тест — график не меняется':(c.wrong>0?('ошибок раньше: '+c.wrong):'новое слово')}</div>
+        ${c.ex?`<div class="example">«${exHtml(c.ex,c.en)}»${c.exru?`<span class="exru">${esc(c.exru)}</span>`:''}</div>`:''}</div>
+    </div>
+    <div class="controls">
+      <button class="btn reveal" id="revealBtn">Показать ответ</button>
+      <div class="grade" id="gradeBox">
+        <button class="btn no" id="noBtn">Не знал<small>← или 1</small></button>
+        <button class="btn yes" id="yesBtn">Знал<small>→ или 2</small></button>
+      </div>
+      <div class="keys"><kbd>Пробел</kbd> показать · затем <kbd>←</kbd> не знал · <kbd>→</kbd> знал</div>
+    </div>`;
+
+  document.getElementById('revealBtn').onclick=reveal;
+  document.getElementById('noBtn').onclick=()=>grade(false);
+  document.getElementById('yesBtn').onclick=()=>grade(true);
+  cardShownAt=performance.now();
+}
+
+/* ---------- рендер: карточка форм (глагол / исключение) ---------- */
+function renderFormsCard(c){
+  const pips=Array.from({length:INTERVAL.length-1},(_,i)=>`<i class="${i<c.box?'on':''}"></i>`).join('');
+  const badge = testActive ? `<div class="testbadge">Тест · ${testTotal-testQueue.length+1} / ${testTotal}</div>` : '';
+  const hint = c.type==='verb' ? 'вспомни прош. время и причастие'
+             : (c.family==='мн. число' ? 'вспомни множественное число' : 'вспомни степени сравнения');
+  const cols=(c.forms||[]).map((f,i)=>
+    `<div class="fcol f${i+1}"><span class="flab">${esc((c.flabels||[])[i]||'')}</span><span class="fval">${esc(f)}</span></div>`).join('');
+  const exBlock = c.ex?`<div class="example">«${exHtml(c.ex,c.en)}»${c.exru?`<span class="exru">${esc(c.exru)}</span>`:''}</div>`:'';
+  const body=document.getElementById('studyBody');
+  body.innerHTML=`
+    <div class="card">
+      ${badge}
+      <div class="pips" title="уровень памяти">${pips}</div>
+      <div class="word">${esc(c.en)}</div>
+      ${c.tr?`<div class="tr">[${esc(c.tr)}]</div>`:''}
+      <div class="hintword">${hint}</div>
+      <div class="answer" id="answer">
+        <div class="forms">${cols}</div>
+        <div class="fmeta"><span class="famtag">${esc(c.family)}</span> ${esc(c.ru)}</div>
+        ${exBlock}
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn reveal" id="revealBtn">Показать формы</button>
+      <div class="grade" id="gradeBox">
+        <button class="btn no" id="noBtn">Не знал<small>← или 1</small></button>
+        <button class="btn yes" id="yesBtn">Знал<small>→ или 2</small></button>
+      </div>
+      <div class="keys"><kbd>Пробел</kbd> показать · <kbd>←</kbd> не знал · <kbd>→</kbd> знал</div>
+    </div>`;
+  document.getElementById('revealBtn').onclick=reveal;
+  document.getElementById('noBtn').onclick=()=>grade(false);
+  document.getElementById('yesBtn').onclick=()=>grade(true);
+  cardShownAt=performance.now();
+}
+
+/* ---------- рендер: карточка выражения (связка / фразовый глагол / идиома) ---------- */
+function renderPhraseCard(c){
+  const pips=Array.from({length:INTERVAL.length-1},(_,i)=>`<i class="${i<c.box?'on':''}"></i>`).join('');
+  const badge = testActive ? `<div class="testbadge">Тест · ${testTotal-testQueue.length+1} / ${testTotal}</div>` : '';
+  const litBlock = c.lit ? `<div class="literal">дословно ${esc(c.lit)} — но значит другое</div>` : '';
+  const exBlock = c.ex ? `<div class="example">«${esc(c.ex)}»${c.exru?`<span class="exru">${esc(c.exru)}</span>`:''}</div>` : '';
+  const body=document.getElementById('studyBody');
+  body.innerHTML=`
+    <div class="card">
+      ${badge}
+      <div class="pips" title="уровень памяти">${pips}</div>
+      ${c.tag?`<div class="ptag">${esc(c.tag)}</div>`:''}
+      <div class="word phrase">${esc(c.en)}</div>
+      <div class="hintword">что это значит?</div>
+      <div class="answer" id="answer">
+        <div class="ru">${esc(c.ru)}</div>
+        ${litBlock}
+        <div class="meta">${testActive?'тест — график не меняется':(c.wrong>0?('ошибок раньше: '+c.wrong):'новое выражение')}</div>
+        ${exBlock}
+      </div>
+    </div>
+    <div class="controls">
+      <button class="btn reveal" id="revealBtn">Показать значение</button>
+      <div class="grade" id="gradeBox">
+        <button class="btn no" id="noBtn">Не знал<small>← или 1</small></button>
+        <button class="btn yes" id="yesBtn">Знал<small>→ или 2</small></button>
+      </div>
+      <div class="keys"><kbd>Пробел</kbd> показать · <kbd>←</kbd> не знал · <kbd>→</kbd> знал</div>
+    </div>`;
+  document.getElementById('revealBtn').onclick=reveal;
+  document.getElementById('noBtn').onclick=()=>grade(false);
+  document.getElementById('yesBtn').onclick=()=>grade(true);
+  cardShownAt=performance.now();
+}
+
+function tplDone(h,p,btn,act,mistakesN,illus){
+  illus=illus||{emoji:'✨',c1:'#5ec8b0',c2:'#7b6cff'};
+  const extra=(mistakesN>0)
+    ? `<button class="action ghost" onclick="window.__act('mistakes')">Повторить ошибки (${mistakesN})</button>`:'';
+  return `<div class="panel" style="text-align:center">
+    <div class="illus spark" style="--i1:${illus.c1};--i2:${illus.c2}">${illus.emoji}</div>
+    <h2>${h}</h2><p>${p}</p>
+    <div style="display:flex;flex-direction:column;gap:8px;align-items:center;margin-top:14px">
+      <button class="action" onclick="window.__act('${act}')">${btn}</button>${extra}
+    </div></div>`;
+}
+window.__act=(a)=>{
+  if(a==='mistakes'){
+    // «Повторить ошибки» = только ошибки (иначе подмешиваются новые/повторение)
+    state.settings.toggles={review:false, fresh:false, mistakes:true};
+    syncToggleUI(); save(); buildQueue(false,true);
+  }
+  else if(a==='more'){ buildQueue(true,true); }   // продолжить сверх дневной цели (+дрилл ошибок)
+  else { buildQueue(); }                          // refresh / поехали
+  nextCard();
+};
+
+function renderTestResults(){
+  document.getElementById('queueLeft').textContent='тест завершён';
+  const total=testStats.correct+testStats.wrong;
+  const acc=total? Math.round(testStats.correct/total*100):0;
+  const missed=testStats.missed.map(id=>state.cards[id]).filter(Boolean);
+  const list=missed.length
+    ? `<ul class="res-miss">${missed.map(c=>`<li><span class="en">${esc(c.en)}</span>${c.tr?`<span class="tr">[${esc(c.tr)}]</span>`:''}<span class="ru">${esc(c.ru)}</span></li>`).join('')}</ul>`
+    : `<p class="muted" style="margin-top:14px">Ни одной ошибки — чисто. 🎯</p>`;
+  const drill=missed.length
+    ? `<button class="action" onclick="window.__test('drill')">Прогнать промахи (${missed.length})</button>`:'';
+  const ill = acc>=80 ? {emoji:'🏆',c1:'#e0a458',c2:'#5ec8b0'}
+            : acc>=50 ? {emoji:'👍',c1:'#5ec8b0',c2:'#7b6cff'}
+            :           {emoji:'💪',c1:'#e0a458',c2:'#e85c8a'};
+  document.getElementById('studyBody').innerHTML=`
+    <div class="panel" style="text-align:center">
+      <div class="illus spark" style="--i1:${ill.c1};--i2:${ill.c2}">${ill.emoji}</div>
+      <h2>Тест пройден</h2>
+      <div class="res-score" style="color:${acc>=80?'var(--accent)':'var(--warn)'}">${acc}%</div>
+      <div class="res-sub">${testStats.correct} верно · ${testStats.wrong} мимо · ${total} слов</div>
+      <div style="display:flex;flex-direction:column;gap:8px;align-items:center">
+        ${drill}
+        <button class="action ghost" onclick="window.__test('done')">Готово</button>
+      </div>
+      ${list}
+    </div>`;
+}
+window.__test=(a)=>{ if(a==='drill') drillMissed(); else endTest(); };
+
+function reveal(){
+  if(revealed||!current) return;
+  revealed=true;
+  document.getElementById('answer').classList.add('show');
+  document.getElementById('revealBtn').style.display='none';
+  document.getElementById('gradeBox').classList.add('show');
+}
+function hasDue(){const today=todayDay();return Object.values(state.cards).some(c=>c.seen>0&&c.due<=today&&inScope(c));}
+
+/* ---------- клавиатура ---------- */
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('view-study').classList.contains('active')===false) return;
+  if(['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
+  if(!current) return;
+  if(!revealed){
+    if(e.code==='Space'||e.code==='Enter'||e.code==='ArrowDown'){e.preventDefault();reveal();}
+  }else{
+    if(e.code==='ArrowLeft'||e.key==='1'){e.preventDefault();grade(false);}
+    if(e.code==='ArrowRight'||e.key==='2'){e.preventDefault();grade(true);}
+  }
+});
+
+/* ---------- статистика ---------- */
+let _events=null;     // кэш разобранного лога ответов на время одного открытия
+let _hardPeriod=0;    // окно для «трудных слов»: 0 = всё время
+
+async function loadEvents(){
+  if(_events) return _events;
+  if(!useServer){
+    try{ _events=JSON.parse(localStorage.getItem(EVENTS_KEY)||'[]'); }catch(e){ _events=[]; }
+    return _events;
+  }
+  let txt='';
+  try{ const r=await fetch('/api/events.jsonl',{cache:'no-store'}); if(r.ok) txt=await r.text(); }catch(e){}
+  const ev=[];
+  txt.split('\n').forEach(ln=>{ ln=ln.trim(); if(ln){ try{ ev.push(JSON.parse(ln)); }catch(e){} } });
+  _events=ev; return ev;
+}
+function dayKey(ts){ const d=new Date(ts);
+  return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+function renderStats(){
+  const cards=Object.values(state.cards);
+  const total=cards.length;
+  const learned=cards.filter(c=>c.box>=LEARNED_BOX).length;
+  const progress=cards.filter(c=>c.seen>0&&c.box<LEARNED_BOX).length;
+  let cor=0,wr=0; cards.forEach(c=>{cor+=c.correct;wr+=c.wrong;});
+  document.getElementById('stTotal').textContent=total;
+  document.getElementById('stLearned').textContent=learned;
+  document.getElementById('stProgress').textContent=progress;
+  document.getElementById('stAcc').textContent=(cor+wr)? Math.round(cor/(cor+wr)*100)+'%' : '—';
+  document.getElementById('stAnswers').textContent=cor+wr;
+
+  const buckets=[0,0,0]; // новые / учатся / выучено
+  cards.forEach(c=>{ if(c.seen===0)buckets[0]++; else if(c.box<LEARNED_BOX)buckets[1]++; else buckets[2]++; });
+  const cols=['var(--faint)','var(--warn)','var(--accent)'];
+  document.getElementById('distBar').innerHTML=buckets.map((v,i)=>
+    `<i style="width:${total?v/total*100:0}%;background:${cols[i]}"></i>`).join('');
+
+  renderHard(_hardPeriod, null);   // «всё время» — сразу из карточек
+  document.getElementById('accChart').innerHTML='<div class="empty">загружаю историю…</div>';
+  document.getElementById('dirSplit').textContent='';
+  _events=null;                     // свежий лог при каждом открытии
+  loadEvents().then(ev=>{
+    renderChart(ev); renderStreak(ev); renderDir(ev);
+    if(_hardPeriod>0) renderHard(_hardPeriod, ev);
+  });
+}
+
+function renderStreak(ev){
+  const days=new Set(ev.map(e=>dayKey(e.ts)));
+  let d=new Date(); let streak=0;
+  if(!days.has(dayKey(d))) d=new Date(d-86400000);     // grace: можно ещё не заниматься сегодня
+  while(days.has(dayKey(d))){ streak++; d=new Date(d-86400000); }
+  document.getElementById('stStreak').textContent=streak;
+}
+
+function renderDir(ev){
+  const agg={'en-ru':[0,0],'ru-en':[0,0]};
+  ev.forEach(e=>{ const a=agg[e.dir]; if(!a) return; a[1]++; if(e.known) a[0]++; });
+  const pct=a=>a[1]?Math.round(a[0]/a[1]*100)+'%':'—';
+  document.getElementById('dirSplit').innerHTML=
+    `Точность: узнавание (en→ru) <b style="color:var(--text)">${pct(agg['en-ru'])}</b> · вспоминание (ru→en) <b style="color:var(--text)">${pct(agg['ru-en'])}</b>`;
+}
+
+function renderChart(ev){
+  const byDay={};
+  ev.forEach(e=>{ const k=dayKey(e.ts); (byDay[k]=byDay[k]||[0,0]); byDay[k][1]++; if(e.known) byDay[k][0]++; });
+  const host=document.getElementById('accChart');
+  if(!Object.keys(byDay).length){
+    host.innerHTML='<div class="empty">Пока нет данных — позанимайся, и здесь появится график.</div>'; return; }
+  const N=21, W=320, H=110, pad=4, bw=(W-pad*2)/N;
+  const base=new Date(); base.setHours(0,0,0,0);
+  let bars='';
+  const days=[];
+  for(let i=N-1;i>=0;i--){ const k=dayKey(new Date(base-i*86400000)); days.push(k); }
+  days.forEach((k,i)=>{
+    const a=byDay[k]; if(!a) return;
+    const pc=a[1]?a[0]/a[1]:0, h=Math.max(2,pc*(H-20)), x=pad+i*bw;
+    const col= pc>=0.8?'#5ec8b0' : pc>=0.5?'#e0a458' : '#e85c8a';
+    bars+=`<rect x="${(x+1).toFixed(1)}" y="${(H-18-h).toFixed(1)}" width="${(bw-2).toFixed(1)}" height="${h.toFixed(1)}" rx="2" fill="${col}"><title>${k}: ${Math.round(pc*100)}% (${a[0]}/${a[1]})</title></rect>`;
+  });
+  const lab=k=>{const p=k.split('-');return p[2]+'.'+p[1];};
+  bars+=`<text x="${pad}" y="${H-4}" fill="var(--faint)" font-size="9">${lab(days[0])}</text>`;
+  bars+=`<text x="${W-pad}" y="${H-4}" text-anchor="end" fill="var(--faint)" font-size="9">${lab(days[N-1])}</text>`;
+  host.innerHTML=`<svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none">${bars}</svg>`;
+}
+
+function renderHard(periodDays, ev){
+  let list;
+  if(!periodDays){
+    list=Object.values(state.cards).filter(c=>c.wrong>0).sort((a,b)=>b.wrong-a.wrong).slice(0,12)
+      .map(c=>({en:c.en,ru:c.ru,n:c.wrong}));
+  }else{
+    if(!ev) return;                       // лог ещё не загружен — дождёмся
+    const since=Date.now()-periodDays*86400000, cnt={};
+    ev.forEach(e=>{ if(!e.known && new Date(e.ts).getTime()>=since) cnt[e.card_id]=(cnt[e.card_id]||0)+1; });
+    list=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,12).map(([id,n])=>{
+      const c=state.cards[id]||{}; return {en:c.en||id,ru:c.ru||'',n};
+    });
+  }
+  document.getElementById('hardList').innerHTML = list.length
+    ? list.map(c=>`<li><span class="en">${esc(c.en)}</span><span class="ru">${esc(c.ru)}</span>
+        <span class="tag">${c.n} ош.</span></li>`).join('')
+    : '<li class="muted" style="border:0">'+(periodDays?'За этот период ошибок нет.':'Пока нет ошибок — отлично.')+'</li>';
+}
+// переключатель периода для «трудных слов»
+document.querySelectorAll('#hardPeriod button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('#hardPeriod button').forEach(x=>x.setAttribute('aria-current', x===b));
+  _hardPeriod=parseInt(b.dataset.d,10);
+  if(_hardPeriod===0) renderHard(0,null);
+  else loadEvents().then(ev=>renderHard(_hardPeriod,ev));
+});
+
+/* ---------- добавление / импорт ---------- */
+async function fetchTr(word){
+  word=(word||'').trim().toLowerCase();
+  if(!word) return '';
+  if(TR[word]) return TR[word];          // встроенная таблица — мгновенно, без сети
+  if(!useServer) return '';
+  try{
+    const r=await fetch('/api/transcribe?word='+encodeURIComponent(word));
+    if(r.ok){ const j=await r.json(); return j.tr||''; }
+  }catch(e){}
+  return '';
+}
+
+function addWord(en,ru,tr){
+  en=en.trim(); ru=ru.trim(); tr=(tr||'').trim();
+  if(!en||!ru) return false;
+  const exists=Object.values(state.cards).some(c=>c.en.toLowerCase()===en.toLowerCase());
+  if(exists) return 'dup';
+  if(!tr) tr=TR[en.toLowerCase()]||'';
+  const id='u'+Date.now()+Math.floor(Math.random()*999);
+  state.cards[id]={en,ru,tr,ex:EX[en.toLowerCase()]||'',exru:EXRU[en.toLowerCase()]||'',type:'word',box:0,wrong:0,correct:0,seen:0,due:0,added:Date.now()};
+  return id;
+}
+function parseImport(text){
+  let ok=0,dup=0,bad=0; const newIds=[];
+  text.split('\n').forEach(line=>{
+    line=line.trim(); if(!line) return;
+    const m=line.split(/\s+[—–-]\s+|;|\t|,/);
+    if(m.length<2){bad++;return;}
+    const en=m[0]; const ru=m.slice(1).join(', ');
+    const r=addWord(en,ru,'');
+    if(typeof r==='string' && r!=='dup'){ ok++; newIds.push(r); }
+    else if(r==='dup')dup++; else bad++;
+  });
+  return {ok,dup,bad,newIds};
+}
+// фоновый бэкфилл транскрипций для импортированных слов (с троттлингом)
+async function backfillTr(ids){ return backfillTrSilent(ids, document.getElementById('importToast')); }
+async function backfillTrSilent(ids, toast){
+  let n=0;
+  for(const id of ids){
+    const c=state.cards[id]; if(!c||c.tr) continue;
+    const tr=await fetchTr(c.en);
+    if(tr){ c.tr=tr; n++; if(n%5===0){ save(); } }
+    await new Promise(r=>setTimeout(r,300));
+  }
+  if(n){ save(); if(toast) toast.textContent=`Транскрипции подтянуты: ${n}.`; }
+}
+
+/* ---------- утилиты / навигация ---------- */
+function esc(s){return String(s).replace(/[&<>"]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[m]));}
+// пример-предложение с подсветкой изучаемого слова (и простых его форм)
+function exHtml(sentence,word){
+  let s=esc(sentence);
+  try{
+    const w=word.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+    s=s.replace(new RegExp('\\b('+w+'(?:s|es|ed|ing|d)?)\\b','ig'),'<span class="exhl">$1</span>');
+  }catch(e){}
+  return s;
+}
+function showBanner(t){const b=document.getElementById('banner');b.textContent=t;b.classList.add('show');}
+
+function switchView(v){
+  const studyLike = (v==='study'||v==='forms'||v==='phrases');  // те же study-вью, разный scope
+  const scope = v==='forms'?'forms':(v==='phrases'?'phrases':'words');
+  if(studyLike && scope!==studyScope && !testActive){ studyScope=scope; current=null; queue=[]; }
+  const viewEl = studyLike ? 'study' : v;
+  document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-current', b.dataset.view===v));
+  document.querySelectorAll('.view').forEach(s=>s.classList.toggle('active', s.id==='view-'+viewEl));
+  if(studyLike){ if(testActive){ renderStudy(); } else if(!current){ buildQueue(); nextCard(); } else renderStudy(); }
+  if(v==='stats') renderStats();
+}
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>switchView(b.dataset.view));
+
+/* тумблеры режима */
+function syncToggleUI(){
+  const t=state.settings.toggles||defaultSettings().toggles;
+  document.getElementById('tgReview').checked=!!t.review;
+  document.getElementById('tgFresh').checked=!!t.fresh;
+  document.getElementById('tgMistakes').checked=!!t.mistakes;
+}
+function onToggleChange(){
+  state.settings.toggles={
+    review:document.getElementById('tgReview').checked,
+    fresh:document.getElementById('tgFresh').checked,
+    mistakes:document.getElementById('tgMistakes').checked,
+  };
+  save();
+  // если включили «Ошибки» — это явный дрилл (показываем даже сегодняшние)
+  if(!testActive){ buildQueue(false, state.settings.toggles.mistakes); nextCard(); }
+}
+// Подсветить тумблеры, которые СЕЙЧАС выключены, но за ними есть слова —
+// чтобы на пустом экране было видно, что включить.
+function updateChipHints(onDone){
+  const map=[['tgReview','review'],['tgFresh','fresh'],['tgMistakes','mistakes']];
+  if(!onDone){
+    map.forEach(([id])=>document.getElementById(id).closest('.tg').classList.remove('hot'));
+    return;
+  }
+  const today=todayDay(); const doneSet=new Set(state.daily.ids);
+  let dueRaw=false,newRaw=false,misRaw=false;
+  for(const [id,c] of Object.entries(state.cards)){
+    if(!inScope(c)) continue;
+    if(c.wrong>0) misRaw=true;
+    if(doneSet.has(id)) continue;
+    if(c.seen>0 && c.due<=today) dueRaw=true;
+    if(c.seen===0) newRaw=true;
+  }
+  const t=state.settings.toggles||{};
+  const avail={review:dueRaw,fresh:newRaw,mistakes:misRaw};
+  map.forEach(([id,key])=>{
+    document.getElementById(id).closest('.tg').classList.toggle('hot', !t[key] && avail[key]);
+  });
+}
+['tgReview','tgFresh','tgMistakes'].forEach(id=>document.getElementById(id).addEventListener('change',onToggleChange));
+document.getElementById('testBtn').onclick=startTest;
+
+/* кнопки форм */
+let addTrManual=false;
+let addTrTimer=null;
+document.getElementById('addEn').addEventListener('input',()=>{
+  if(addTrManual) return;
+  clearTimeout(addTrTimer);
+  const w=document.getElementById('addEn').value;
+  const hint=document.getElementById('trHint');
+  addTrTimer=setTimeout(async()=>{
+    if(addTrManual) return;
+    hint.textContent='…';
+    const tr=await fetchTr(w);
+    if(!addTrManual){ document.getElementById('addTr').value=tr; }
+    hint.textContent= tr?'':'не нашлось — впиши руками';
+  },450);
+});
+document.getElementById('addTr').addEventListener('input',()=>{
+  addTrManual=document.getElementById('addTr').value.trim()!=='';
+});
+document.getElementById('addBtn').onclick=()=>{
+  const en=document.getElementById('addEn'), ru=document.getElementById('addRu'), tr=document.getElementById('addTr');
+  const r=addWord(en.value,ru.value,tr.value); const t=document.getElementById('addToast');
+  if(typeof r==='string' && r!=='dup'){
+    t.style.color='var(--accent)';t.textContent='Добавлено: '+en.value+' — '+ru.value;
+    en.value='';ru.value='';tr.value='';addTrManual=false;document.getElementById('trHint').textContent='';en.focus();save();
+  }
+  else if(r==='dup'){t.style.color='var(--warn)';t.textContent='Такое слово уже есть.';}
+  else{t.style.color='var(--warn)';t.textContent='Заполни слово и перевод.';}
+};
+document.getElementById('importBtn').onclick=()=>{
+  const r=parseImport(document.getElementById('importBox').value);
+  const t=document.getElementById('importToast');t.style.color='var(--accent)';
+  t.textContent=`Добавлено ${r.ok}, пропущено дублей ${r.dup}, не распознано ${r.bad}.`+(r.newIds.length?' Тяну транскрипции…':'');
+  document.getElementById('importBox').value=''; save();
+  if(r.newIds.length) backfillTr(r.newIds);
+};
+document.getElementById('saveSettings').onclick=()=>{
+  state.settings.dir=document.getElementById('setDir').value;
+  const n=parseInt(document.getElementById('setTarget').value,10);
+  state.settings.target=(n>0&&n<5000)?n:400;
+  document.getElementById('setTarget').value=state.settings.target;
+  const t=document.getElementById('setToast');t.style.color='var(--accent)';t.textContent='Сохранено.';
+  buildQueue(); save();
+};
+document.getElementById('exportBtn').onclick=()=>{
+  const blob=new Blob([JSON.stringify(state)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='vocab-backup-'+todayStr()+'.json';a.click();
+  document.getElementById('backupToast').textContent='Файл скачан.';
+};
+document.getElementById('restoreBtn').onclick=()=>{
+  const t=document.getElementById('backupToast');
+  try{const obj=JSON.parse(document.getElementById('restoreBox').value);
+    if(!obj.cards) throw 0; state=obj; migrate();
+    t.style.color='var(--accent)';t.textContent='Восстановлено.';save();syncSettingsUI();syncToggleUI();buildQueue();current=null;testActive=false;nextCard();
+  }catch(e){t.style.color='var(--warn)';t.textContent='Не похоже на корректную копию.';}
+};
+document.getElementById('resetBtn').onclick=()=>{
+  const t=document.getElementById('resetToast');
+  if(document.getElementById('resetBtn').dataset.confirm){
+    state=freshState();save();syncSettingsUI();syncToggleUI();buildQueue();current=null;testActive=false;nextCard();
+    t.style.color='var(--accent)';t.textContent='Сброшено к начальному набору.';
+    document.getElementById('resetBtn').dataset.confirm='';
+    document.getElementById('resetBtn').textContent='Сбросить всё';
+  }else{
+    document.getElementById('resetBtn').dataset.confirm='1';
+    document.getElementById('resetBtn').textContent='Точно? Нажми ещё раз';
+  }
+};
+
+/* --- сброс только статистики (слова остаются) --- */
+document.getElementById('resetStatsBtn').onclick=()=>{
+  const b=document.getElementById('resetStatsBtn'), t=document.getElementById('resetToast');
+  if(b.dataset.confirm){
+    for(const id in state.cards){
+      const c=state.cards[id];
+      c.box=0; c.wrong=0; c.correct=0; c.seen=0; c.due=0;
+    }
+    state.daily={date:todayStr(),done:0,ids:[]};
+    save(); buildQueue(); current=null; testActive=false; nextCard();
+    t.style.color='var(--accent)';t.textContent='Статистика сброшена, слова на месте.';
+    b.dataset.confirm=''; b.textContent='Сбросить статистику';
+  }else{
+    b.dataset.confirm='1'; b.textContent='Точно? Нажми ещё раз';
+  }
+};
+
+/* --- скачать слова для обмена (без прогресса) --- */
+document.getElementById('exportWordsBtn').onclick=()=>{
+  const words=Object.values(state.cards).filter(c=>categoryOf(c)==='words').map(c=>({en:c.en,ru:c.ru,tr:c.tr||''}));
+  const blob=new Blob([JSON.stringify(words,null,1)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='vocab-words-'+todayStr()+'.json';a.click();
+  const t=document.getElementById('dataToast');t.style.color='var(--accent)';
+  t.textContent=`Выгружено слов: ${words.length}.`;
+};
+
+/* --- скачать лог ответов --- */
+document.getElementById('exportLogBtn').onclick=()=>{
+  const t=document.getElementById('dataToast');t.style.color='var(--accent)';
+  if(useServer){
+    // сервер отдаёт файл сам (вместе с тем, что уже накоплено на диске)
+    const a=document.createElement('a');a.href='/api/events.jsonl';a.download='events.jsonl';a.click();
+    t.textContent='Скачиваю лог…';
+  }else{
+    // файловый режим — выгружаем буфер из localStorage
+    let buf=[]; try{ buf=JSON.parse(localStorage.getItem(EVENTS_KEY)||'[]'); }catch(e){}
+    const jsonl=buf.map(o=>JSON.stringify(o)).join('\n');
+    const blob=new Blob([jsonl],{type:'application/x-ndjson'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download='events.jsonl';a.click();
+    t.textContent=`Выгружено событий: ${buf.length}.`;
+  }
+};
+
+/* --- загрузить присланный набор слов --- */
+document.getElementById('wordsFile').onchange=(e)=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ document.getElementById('wordsBox').value=r.result; };
+  r.readAsText(f);
+};
+document.getElementById('wordsImportBtn').onclick=()=>{
+  const t=document.getElementById('wordsToast');
+  let arr;
+  try{ arr=JSON.parse(document.getElementById('wordsBox').value); if(!Array.isArray(arr)) throw 0; }
+  catch(e){ t.style.color='var(--warn)'; t.textContent='Не похоже на файл слов (.json со списком).'; return; }
+  let ok=0,dup=0,bad=0; const newIds=[];
+  for(const w of arr){
+    if(!w || !w.en || !w.ru){ bad++; continue; }
+    const r=addWord(w.en, w.ru, w.tr||'');
+    if(typeof r==='string' && r!=='dup'){ ok++; newIds.push(r); }
+    else if(r==='dup') dup++; else bad++;
+  }
+  t.style.color='var(--accent)';
+  t.textContent=`Добавлено ${ok}, пропущено дублей ${dup}, негодных ${bad}.`+(newIds.length?' Тяну недостающие транскрипции…':'');
+  document.getElementById('wordsBox').value=''; document.getElementById('wordsFile').value=''; save();
+  if(newIds.length) backfillTrSilent(newIds, t);
+};
+
+/* --- завершить работу сервера --- */
+document.getElementById('shutdownBtn').onclick=async()=>{
+  const t=document.getElementById('shutdownToast');
+  if(!useServer){ t.style.color='var(--warn)'; t.textContent='Сервер не запущен (открыто как файл) — просто закрой вкладку.'; return; }
+  try{ flush(true); }catch(e){}
+  try{ await fetch('/api/shutdown',{method:'POST'}); }catch(e){}
+  t.style.color='var(--accent)';
+  t.textContent='Сервер остановлен. Эту вкладку можно закрыть.';
+};
+
+function syncSettingsUI(){
+  document.getElementById('setDir').value=state.settings.dir;
+  document.getElementById('setTarget').value=state.settings.target;
+}
+
+/* ---------- миграция старых данных ---------- */
+function migrate(){
+  if(!state.settings) state.settings=defaultSettings();
+  if(!state.settings.toggles) state.settings.toggles=defaultSettings().toggles;
+  if(typeof state.settings.target!=='number') state.settings.target=400;
+  if(!state.settings.dir) state.settings.dir='en-ru';
+  if(!state.daily) state.daily={date:todayStr(),done:0,ids:[]};
+  for(const id in state.cards){
+    const c=state.cards[id];
+    const _k=(c.en||'').toLowerCase();
+    if(c.tr===undefined) c.tr=TR[_k]||'';
+    if(c.type===undefined) c.type='word';
+    // встроенные примеры/переводы обновляем из таблиц при апдейте приложения
+    // (примеры не редактируются вручную, поэтому можно освежать)
+    if(EX[_k]) c.ex=EX[_k]; else if(c.ex===undefined) c.ex='';
+    if(EXRU[_k]) c.exru=EXRU[_k]; else if(c.exru===undefined) c.exru='';
+    // старое due хранилось в миллисекундах эпохи → переводим в день
+    if(typeof c.due==='number' && c.due>1e7) c.due=dayFromMs(c.due);
+    if(typeof c.due!=='number') c.due=0;
+  }
+  topUpSeed();
+}
+
+// Дозалить недостающие встроенные слова (после обновления приложения новые
+// слова из SEED появляются у всех, не затрагивая уже накопленный прогресс).
+function topUpSeed(){
+  const haveEn=new Set(Object.values(state.cards).map(c=>(c.en||'').toLowerCase()));
+  SEED.replace(/\n/g,'').split('|').forEach(pair=>{
+    const i=pair.indexOf(':'); if(i<0) return;
+    const en=pair.slice(0,i).trim(), ru=pair.slice(i+1).trim();
+    if(!en||!ru || haveEn.has(en.toLowerCase())) return;
+    const id='s'+en.toLowerCase().replace(/[^a-z]/g,'')+Math.floor(Math.random()*9999);
+    state.cards[id]={en,ru,tr:TR[en.toLowerCase()]||'',ex:EX[en.toLowerCase()]||'',exru:EXRU[en.toLowerCase()]||'',type:'word',box:0,wrong:0,correct:0,seen:0,due:0,added:Date.now()};
+    haveEn.add(en.toLowerCase());
+  });
+  // дозалив карточек модуля «Формы» (по своему ключу, не конфликтует со словами)
+  const haveForms=new Set(Object.values(state.cards).filter(isForm).map(c=>(c.en||'').toLowerCase()));
+  FORMS.forEach(f=>{
+    if(haveForms.has(f.en.toLowerCase())) return;
+    state.cards['f'+f.en.toLowerCase().replace(/[^a-z]/g,'')+Math.floor(Math.random()*9999)]=formCard(f);
+    haveForms.add(f.en.toLowerCase());
+  });
+  // дозалив карточек модуля «Выражения»
+  const havePhr=new Set(Object.values(state.cards).filter(isPhrase).map(c=>(c.en||'').toLowerCase()));
+  PHRASES.forEach((p,i)=>{
+    if(havePhr.has(p.en.toLowerCase())) return;
+    state.cards['p'+i+'_'+Math.floor(Math.random()*9999)]=phraseCard(p);
+    havePhr.add(p.en.toLowerCase());
+  });
+}
+
+/* ---------- старт ---------- */
+(async function init(){
+  state=await load();
+  if(!state){ state=freshState(); await save(); }
+  migrate();
+  if(!canPersist){
+    showBanner('Прогресс не сохраняется — нет ни сервера, ни доступа к хранилищу браузера. Делай резервную копию во вкладке «Ещё».');
+  }else if(!useServer){
+    showBanner('Сервер не найден: прогресс сохраняется в этом браузере (localStorage). Для записи в файл запусти через app.py — см. README.');
+  }
+  flushEventBuffer();
+  syncSettingsUI();
+  syncToggleUI();
+  rollDaily();
+  buildQueue();
+  nextCard();
+})();
+</script>
